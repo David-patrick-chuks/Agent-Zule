@@ -1,25 +1,52 @@
 {
-  "name": "@agent-zule/contracts",
+  "name": "contracts",
   "version": "1.0.0",
-  "description": "Agent Zule Smart Contracts - Conditional Permissions on Monad",
-  "private": true,
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy.ts --network monad-testnet",
-    "verify": "hardhat run scripts/verify.ts --network monad-testnet",
-    "dev": "hardhat node"
+    "test:unit": "hardhat test test/unit",
+    "test:integration": "hardhat test test/integration",
+    "test:fuzz": "hardhat test test/fuzz",
+    "test:gas": "hardhat test test/gas",
+    "test:coverage": "hardhat coverage",
+    "deploy:local": "hardhat run scripts/deploy/01-deploy-core.ts --network localhost",
+    "deploy:testnet": "hardhat run scripts/deploy/01-deploy-core.ts --network monad-testnet",
+    "deploy:all": "hardhat deploy --network monad-testnet",
+    "verify": "hardhat verify --network monad-testnet",
+    "size": "hardhat size-contracts",
+    "gas-report": "REPORT_GAS=true hardhat test",
+    "clean": "hardhat clean",
+    "node": "hardhat node",
+    "fork": "hardhat node --fork https://testnet.monad.xyz"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
-    "hardhat": "^2.17.0",
-    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@metamask/delegation-toolkit": "^0.13.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "dotenv": "^17.2.2",
     "ethers": "^6.8.0",
-    "@openzeppelin/contracts": "^5.0.0",
-    "@metamask/smart-accounts": "^0.1.0",
-    "dotenv": "^16.3.0"
+    "forge-std": "^1.1.2",
+    "hardhat": "^2.26.3",
+    "prb-math": "^2.4.3",
+    "solmate": "^6.8.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@nomicfoundation/hardhat-verify": "^2.1.1",
+    "@types/node": "^24.5.2",
+    "foundry": "^4.7.0",
+    "hardhat-abi-exporter": "^2.11.0",
+    "hardhat-contract-sizer": "^2.10.1",
+    "hardhat-deploy": "^1.0.4",
+    "hardhat-gas-reporter": "^2.3.0",
+    "hardhat-tracer": "^3.3.0",
+    "solidity-coverage": "^0.8.16",
+    "typescript": "^5.9.2"
   }
 }
