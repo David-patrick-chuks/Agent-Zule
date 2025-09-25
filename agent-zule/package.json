@@ -1,0 +1,37 @@
+{
+  "name": "agent-zule",
+  "version": "1.0.0",
+  "description": "AI-Powered Portfolio Rebalancing Agent on Monad - Agent Zule",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd packages/frontend && npm run dev",
+    "dev:backend": "cd packages/backend && npm run dev",
+    "dev:contracts": "cd packages/contracts && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend && npm run build:contracts",
+    "build:frontend": "cd packages/frontend && npm run build",
+    "build:backend": "cd packages/backend && npm run build",
+    "build:contracts": "cd packages/contracts && npm run build",
+    "test": "npm run test:contracts",
+    "test:contracts": "cd packages/contracts && npm run test",
+    "deploy": "cd packages/contracts && npm run deploy"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": [
+    "ai",
+    "portfolio",
+    "defi",
+    "monad",
+    "metamask",
+    "farcaster",
+    "envio",
+    "hackathon"
+  ],
+  "author": "Agent Zule Team",
+  "license": "MIT"
+}
