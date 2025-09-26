@@ -1,0 +1,578 @@
+# GraphQL Schema for Agent Zule Envio Indexer
+# This schema defines the data structure for portfolio, recommendation, and cross-chain events
+
+type Query {
+  # Portfolio Queries
+  portfolioEvents(
+    userId: String
+    eventType: String
+    fromBlock: Int
+    toBlock: Int
+    limit: Int = 100
+    offset: Int = 0
+  ): [PortfolioEvent!]!
+
+  portfolioMetrics(
+    userId: String!
+    timeframe: String = "30d"
+  ): PortfolioMetrics!
+
+  # Recommendation Queries
+  recommendationEvents(
+    userId: String
+    type: String
+    status: String
+    fromBlock: Int
+    toBlock: Int
+    limit: Int = 100
+    offset: Int = 0
+  ): [RecommendationEvent!]!
+
+  recommendationStats(
+    userId: String
+    timeframe: String = "30d"
+  ): RecommendationStats!
+
+  # Trade Queries
+  tradeEvents(
+    userId: String
+    tokenIn: String
+    tokenOut: String
+    fromBlock: Int
+    toBlock: Int
+    limit: Int = 100
+    offset: Int = 0
+  ): [TradeEvent!]!
+
+  tradeStats(
+    userId: String
+    timeframe: String = "30d"
+  ): TradeStats!
+
+  # Cross-chain Queries
+  crossChainEvents(
+    userId: String
+    sourceChain: String
+    targetChain: String
+    status: String
+    fromBlock: Int
+    toBlock: Int
+    limit: Int = 100
+    offset: Int = 0
+  ): [CrossChainEvent!]!
+
+  crossChainStats(
+    timeframe: String = "30d"
+  ): CrossChainStats!
+
+  # DEX Queries
+  dexEvents(
+    poolAddress: String
+    eventType: String
+    fromBlock: Int
+    toBlock: Int
+    limit: Int = 100
+    offset: Int = 0
+  ): [DexEvent!]!
+
+  liquidityPools(
+    token0: String
+    token1: String
+    minLiquidity: String
+    limit: Int = 100
+    offset: Int = 0
+  ): [LiquidityPool!]!
+
+  # Market Data Queries
+  marketData(
+    tokens: [String!]
+    timeframe: String = "1d"
+  ): MarketData!
+
+  priceHistory(
+    token: String!
+    timeframe: String = "1d"
+    limit: Int = 100
+  ): [PricePoint!]!
+
+  # Health and Status
+  health: HealthStatus!
+  stats: IndexerStats!
+}
+
+type Mutation {
+  # Portfolio Mutations
+  createPortfolioEvent(
+    input: PortfolioEventInput!
+  ): PortfolioEvent!
+
+  updatePortfolioEvent(
+    id: ID!
+    input: PortfolioEventUpdateInput!
+  ): PortfolioEvent!
+
+  # Recommendation Mutations
+  createRecommendationEvent(
+    input: RecommendationEventInput!
+  ): RecommendationEvent!
+
+  updateRecommendationEvent(
+    id: ID!
+    input: RecommendationEventUpdateInput!
+  ): RecommendationEvent!
+
+  # Trade Mutations
+  createTradeEvent(
+    input: TradeEventInput!
+  ): TradeEvent!
+
+  updateTradeEvent(
+    id: ID!
+    input: TradeEventUpdateInput!
+  ): TradeEvent!
+
+  # Cross-chain Mutations
+  createCrossChainEvent(
+    input: CrossChainEventInput!
+  ): CrossChainEvent!
+
+  updateCrossChainEvent(
+    id: ID!
+    input: CrossChainEventUpdateInput!
+  ): CrossChainEvent!
+}
+
+type Subscription {
+  # Real-time Subscriptions
+  portfolioUpdates(userId: String!): PortfolioEvent!
+  recommendationUpdates(userId: String!): RecommendationEvent!
+  tradeUpdates(userId: String!): TradeEvent!
+  crossChainUpdates: CrossChainEvent!
+  marketDataUpdates: MarketData!
+}
+
+# Portfolio Types
+type PortfolioEvent {
+  id: ID!
+  userId: String!
+  eventType: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: PortfolioEventData!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PortfolioEventData {
+  totalValue: String!
+  positions: [Position!]!
+  riskScore: Float!
+  lastRebalanced: String!
+  changes: [PositionChange!]!
+}
+
+type Position {
+  token: String!
+  amount: String!
+  value: String!
+  allocation: Float!
+}
+
+type PositionChange {
+  token: String!
+  oldAmount: String!
+  newAmount: String!
+  change: String!
+  changePercentage: Float!
+}
+
+type PortfolioMetrics {
+  totalValue: String!
+  totalPnl: String!
+  totalPnlPercentage: Float!
+  dailyPnl: String!
+  dailyPnlPercentage: Float!
+  volatility: Float!
+  sharpeRatio: Float!
+  maxDrawdown: Float!
+  beta: Float!
+  alpha: Float!
+  diversificationScore: Float!
+  concentrationRisk: Float!
+}
+
+# Recommendation Types
+type RecommendationEvent {
+  id: ID!
+  userId: String!
+  type: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: RecommendationEventData!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type RecommendationEventData {
+  description: String!
+  details: String!
+  riskLevel: String!
+  communityVotes: CommunityVotes!
+  proposedAt: String!
+  approvedAt: String
+  executedAt: String
+  expiresAt: String
+}
+
+type CommunityVotes {
+  upvotes: Int!
+  downvotes: Int!
+  voters: [String!]!
+}
+
+type RecommendationStats {
+  totalRecommendations: Int!
+  approvedRecommendations: Int!
+  executedRecommendations: Int!
+  rejectedRecommendations: Int!
+  averageVotes: Float!
+  approvalRate: Float!
+  executionRate: Float!
+  byType: [TypeStats!]!
+  byRiskLevel: [RiskLevelStats!]!
+}
+
+type TypeStats {
+  type: String!
+  count: Int!
+  successRate: Float!
+}
+
+type RiskLevelStats {
+  riskLevel: String!
+  count: Int!
+  successRate: Float!
+}
+
+# Trade Types
+type TradeEvent {
+  id: ID!
+  userId: String!
+  type: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: TradeEventData!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type TradeEventData {
+  tokenIn: String!
+  tokenOut: String!
+  amountIn: String!
+  amountOut: String!
+  price: String!
+  slippage: Float!
+  gasUsed: String!
+  gasPrice: String!
+  fee: String!
+  route: [String!]!
+  dex: String!
+}
+
+type TradeStats {
+  totalTrades: Int!
+  completedTrades: Int!
+  failedTrades: Int!
+  totalVolume: String!
+  totalFees: String!
+  averageGasUsed: Float!
+  successRate: Float!
+  byType: [TradeTypeStats!]!
+  byToken: [TokenStats!]!
+}
+
+type TradeTypeStats {
+  type: String!
+  count: Int!
+  volume: String!
+  successRate: Float!
+}
+
+type TokenStats {
+  token: String!
+  volume: String!
+  count: Int!
+  averagePrice: String!
+}
+
+# Cross-chain Types
+type CrossChainEvent {
+  id: ID!
+  userId: String!
+  sourceChain: String!
+  targetChain: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: CrossChainEventData!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type CrossChainEventData {
+  token: String!
+  amount: String!
+  bridge: String!
+  fees: String!
+  estimatedTime: Int!
+  sourceTxHash: String!
+  targetTxHash: String
+  completedAt: String
+}
+
+type CrossChainStats {
+  totalBridges: Int!
+  completedBridges: Int!
+  failedBridges: Int!
+  totalVolume: String!
+  totalFees: String!
+  averageTime: Float!
+  successRate: Float!
+  byChain: [ChainStats!]!
+  byBridge: [BridgeStats!]!
+}
+
+type ChainStats {
+  chain: String!
+  count: Int!
+  volume: String!
+  successRate: Float!
+}
+
+type BridgeStats {
+  bridge: String!
+  count: Int!
+  volume: String!
+  successRate: Float!
+  averageTime: Float!
+}
+
+# DEX Types
+type DexEvent {
+  id: ID!
+  poolAddress: String!
+  eventType: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: DexEventData!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type DexEventData {
+  token0: String!
+  token1: String!
+  reserve0: String!
+  reserve1: String!
+  liquidity: String!
+  price: String!
+  fee: Float!
+  tick: Int!
+  sqrtPriceX96: String!
+}
+
+type LiquidityPool {
+  address: String!
+  token0: String!
+  token1: String!
+  reserve0: String!
+  reserve1: String!
+  liquidity: String!
+  fee: Float!
+  tick: Int!
+  sqrtPriceX96: String!
+  volume24h: String!
+  fees24h: String!
+  apy: Float!
+  createdAt: String!
+  updatedAt: String!
+}
+
+# Market Data Types
+type MarketData {
+  timestamp: String!
+  totalMarketCap: String!
+  totalVolume24h: String!
+  marketTrend: String!
+  volatility: Float!
+  fearGreedIndex: Int!
+  topGainers: [TokenChange!]!
+  topLosers: [TokenChange!]!
+}
+
+type TokenChange {
+  token: String!
+  symbol: String!
+  priceChange: String!
+  priceChangePercent: Float!
+}
+
+type PricePoint {
+  timestamp: String!
+  price: String!
+  volume: String!
+  marketCap: String!
+}
+
+# Health and Status Types
+type HealthStatus {
+  status: String!
+  uptime: String!
+  lastBlock: Int!
+  processedEvents: Int!
+  errors: Int!
+  version: String!
+}
+
+type IndexerStats {
+  totalEvents: Int!
+  eventsPerSecond: Float!
+  averageProcessingTime: Float!
+  errorRate: Float!
+  uptime: String!
+  memoryUsage: String!
+  cpuUsage: Float!
+}
+
+# Input Types
+input PortfolioEventInput {
+  userId: String!
+  eventType: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: PortfolioEventDataInput!
+}
+
+input PortfolioEventDataInput {
+  totalValue: String!
+  positions: [PositionInput!]!
+  riskScore: Float!
+  lastRebalanced: String!
+  changes: [PositionChangeInput!]!
+}
+
+input PositionInput {
+  token: String!
+  amount: String!
+  value: String!
+  allocation: Float!
+}
+
+input PositionChangeInput {
+  token: String!
+  oldAmount: String!
+  newAmount: String!
+  change: String!
+  changePercentage: Float!
+}
+
+input PortfolioEventUpdateInput {
+  data: PortfolioEventDataInput
+}
+
+input RecommendationEventInput {
+  userId: String!
+  type: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: RecommendationEventDataInput!
+}
+
+input RecommendationEventDataInput {
+  description: String!
+  details: String!
+  riskLevel: String!
+  communityVotes: CommunityVotesInput!
+  proposedAt: String!
+  approvedAt: String
+  executedAt: String
+  expiresAt: String
+}
+
+input CommunityVotesInput {
+  upvotes: Int!
+  downvotes: Int!
+  voters: [String!]!
+}
+
+input RecommendationEventUpdateInput {
+  status: String
+  data: RecommendationEventDataInput
+}
+
+input TradeEventInput {
+  userId: String!
+  type: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: TradeEventDataInput!
+}
+
+input TradeEventDataInput {
+  tokenIn: String!
+  tokenOut: String!
+  amountIn: String!
+  amountOut: String!
+  price: String!
+  slippage: Float!
+  gasUsed: String!
+  gasPrice: String!
+  fee: String!
+  route: [String!]!
+  dex: String!
+}
+
+input TradeEventUpdateInput {
+  status: String
+  data: TradeEventDataInput
+}
+
+input CrossChainEventInput {
+  userId: String!
+  sourceChain: String!
+  targetChain: String!
+  status: String!
+  blockNumber: Int!
+  transactionHash: String!
+  timestamp: Int!
+  data: CrossChainEventDataInput!
+}
+
+input CrossChainEventDataInput {
+  token: String!
+  amount: String!
+  bridge: String!
+  fees: String!
+  estimatedTime: Int!
+  sourceTxHash: String!
+  targetTxHash: String
+  completedAt: String
+}
+
+input CrossChainEventUpdateInput {
+  status: String
+  data: CrossChainEventDataInput
+}

@@ -424,8 +424,8 @@ export class CrossChainMonitorService {
           sourceChain: 'ethereum',
           targetChain: 'monad',
           token: data.token,
-          sourcePrice: 1, // Placeholder
-          targetPrice: 1, // Placeholder
+          sourcePrice: await this.getTokenPrice(opportunity.sourceToken, opportunity.sourceChain),
+          targetPrice: await this.getTokenPrice(opportunity.targetToken, opportunity.targetChain),
           profit: data.apy * 1000, // Estimated profit on $1000
           profitPercentage: data.apy * 100,
           gasCost: 50, // Estimated gas cost
@@ -530,5 +530,19 @@ export class CrossChainMonitorService {
       congestion: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
       lastUpdate: new Date()
     };
+  }
+
+  private async getTokenPrice(token: string, chain: string): Promise<number> {
+    try {
+      // Get real token price from market data
+      const { HyperSyncService } = await import('./HyperSyncService');
+      const hyperSyncService = new HyperSyncService();
+      
+      const priceData = await hyperSyncService.getRealTimeTokenPrice(token, chain);
+      return priceData.price || 1; // Default to 1 if price not available
+    } catch (error) {
+      this.logger.warn('Failed to get token price, using default', error, { token, chain });
+      return 1; // Default fallback price
+    }
   }
 }

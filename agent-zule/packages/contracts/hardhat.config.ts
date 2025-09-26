@@ -1,15 +1,15 @@
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-verify";
-import "hardhat-gas-reporter";
-import "solidity-coverage";
-import "hardhat-contract-sizer";
-import "hardhat-abi-exporter";
-import "hardhat-deploy";
-import "hardhat-tracer";
-import "dotenv/config";
+const { HardhatUserConfig } = require("hardhat/config");
+require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-verify");
+// require("dotenv/config"); // Commented out since no .env file
+require("hardhat-abi-exporter");
+require("hardhat-contract-sizer");
+require("hardhat-deploy");
+require("hardhat-gas-reporter");
+require("hardhat-tracer");
+require("solidity-coverage");
 
-const config: HardhatUserConfig = {
+const config = {
   solidity: {
     version: "0.8.19",
     settings: {
@@ -23,15 +23,14 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       chainId: 31337,
-      forking: {
-        url: process.env.MONAD_TESTNET_RPC || "https://testnet.monad.xyz",
-      },
+      // Remove forking during compilation to avoid RPC errors
     },
     "monad-testnet": {
-      url: process.env.MONAD_TESTNET_RPC || "https://testnet.monad.xyz",
+      url: "https://testnet.monad.xyz",
       chainId: 123456789,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: [], // No private keys for compilation
       gasPrice: 1000000000, // 1 gwei
+      timeout: 60000, // 60 seconds
     },
     localhost: {
       url: "http://127.0.0.1:8545",
@@ -39,7 +38,7 @@ const config: HardhatUserConfig = {
     },
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
+    enabled: false, // Disabled for compilation without env vars
     currency: "USD",
     gasPrice: 20,
   },
@@ -59,7 +58,7 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      "monad-testnet": process.env.MONAD_API_KEY || "",
+      "monad-testnet": "", // No API key needed for compilation
     },
     customChains: [
       {
@@ -91,4 +90,4 @@ const config: HardhatUserConfig = {
   },
 };
 
-export default config;
+module.exports = config;

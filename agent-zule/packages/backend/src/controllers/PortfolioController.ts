@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
-import { Logger } from '../utils/Logger';
+import { Portfolio } from '../models/Portfolio';
 import { PortfolioAnalyzer } from '../services/ai/PortfolioAnalyzer';
 import { RiskAssessor } from '../services/ai/RiskAssessor';
-import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
 import { DataProcessorService } from '../services/envio/DataProcessorService';
-import { Portfolio } from '../models/Portfolio';
-import { User } from '../models/User';
+import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
+import { Logger } from '../utils/Logger';
 
 export class PortfolioController {
   private logger = Logger.getInstance();
@@ -64,7 +63,7 @@ export class PortfolioController {
           // Get risk assessment
           const riskAssessment = await this.riskAssessor.assessPortfolioRisk(
             analyzedPortfolio,
-            { trend: 'sideways', volatility: 0.2, volume: 1000000 } // Placeholder market data
+            await this.getMarketData()
           );
 
           responseData.data.analysis = {
@@ -329,7 +328,7 @@ export class PortfolioController {
       // Get risk assessment
       const riskAssessment = await this.riskAssessor.assessPortfolioRisk(
         portfolio,
-        { trend: 'sideways', volatility: 0.2, volume: 1000000 } // Placeholder market data
+        await this.getMarketData()
       );
 
       // Get risk alerts
@@ -528,5 +527,28 @@ export class PortfolioController {
     const gasPrice = 0.00000002; // 20 gwei
     const totalGas = recommendations.length * gasPerTransaction;
     return (totalGas * gasPrice).toString();
+  }
+
+  private async getMarketData(): Promise<{ trend: string; volatility: number; volume: number }> {
+    try {
+      // Get real market data from Envio services
+      const { HyperSyncService } = await import('../services/envio/HyperSyncService');
+      const hyperSyncService = new HyperSyncService();
+      
+      const marketData = await hyperSyncService.getRealTimeMarketData();
+      
+      return {
+        trend: marketData.trend || 'sideways',
+        volatility: marketData.volatility || 0.2,
+        volume: marketData.volume || 1000000
+      };
+    } catch (error) {
+      this.logger.warn('Failed to get real market data, using defaults', error);
+      return {
+        trend: 'sideways',
+        volatility: 0.2,
+        volume: 1000000
+      };
+    }
   }
 }

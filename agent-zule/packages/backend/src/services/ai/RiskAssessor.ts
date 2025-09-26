@@ -422,9 +422,23 @@ export class RiskAssessor {
     const numPositions = portfolio.positions.length;
     if (numPositions < 3) return 80; // High risk with few positions
     
-    // Estimate correlation based on position types
-    const correlation = 0.6; // Placeholder - would use actual correlation matrix
-    return correlation * 100;
+    // Calculate correlation based on position types and token characteristics
+    let totalCorrelation = 0;
+    let pairCount = 0;
+    
+    for (let i = 0; i < numPositions; i++) {
+      for (let j = i + 1; j < numPositions; j++) {
+        const pos1 = portfolio.positions[i];
+        const pos2 = portfolio.positions[j];
+        
+        const correlation = this.calculatePositionCorrelation(pos1, pos2);
+        totalCorrelation += correlation;
+        pairCount++;
+      }
+    }
+    
+    const averageCorrelation = pairCount > 0 ? totalCorrelation / pairCount : 0.6;
+    return averageCorrelation * 100;
   }
 
   private calculateLiquidityRisk(portfolio: Portfolio): number {
@@ -460,9 +474,21 @@ export class RiskAssessor {
   }
 
   private calculateCreditRisk(portfolio: Portfolio): number {
-    // Simplified credit risk calculation
-    // In DeFi, this would consider smart contract risks, protocol risks, etc.
-    return 20; // Placeholder - 20% credit risk
+    // Calculate credit risk based on protocol and smart contract risks
+    let totalWeightedRisk = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const protocolRisk = this.getProtocolRisk(position.token);
+      const smartContractRisk = this.getSmartContractRisk(position.token);
+      const creditRisk = Math.max(protocolRisk, smartContractRisk);
+      
+      const weight = position.allocation;
+      totalWeightedRisk += creditRisk * weight;
+      totalWeight += weight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedRisk / totalWeight : 20;
   }
 
   private calculateOperationalRisk(portfolio: Portfolio): number {
@@ -632,8 +658,21 @@ export class RiskAssessor {
   }
 
   private calculateBeta(portfolio: Portfolio): number {
-    // Simplified beta calculation
-    return 1.2; // Placeholder
+    // Calculate weighted average beta based on positions
+    if (portfolio.positions.length === 0) return 1;
+    
+    let totalWeightedBeta = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const tokenBeta = this.getTokenBeta(position.token);
+      const weight = position.allocation;
+      
+      totalWeightedBeta += tokenBeta * weight;
+      totalWeight += weight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedBeta / totalWeight : 1;
   }
 
   private calculateSortinoRatio(returns: number, volatility: number): number {
@@ -642,12 +681,117 @@ export class RiskAssessor {
   }
 
   private calculateInformationRatio(portfolio: Portfolio): number {
-    // Simplified information ratio calculation
-    return 0.5; // Placeholder
+    // Calculate information ratio based on portfolio performance vs benchmark
+    const portfolioReturn = portfolio.metrics.totalReturn || 0;
+    const benchmarkReturn = 0.08; // 8% benchmark return
+    const trackingError = this.calculateTrackingError(portfolio);
+    
+    return trackingError > 0 ? (portfolioReturn - benchmarkReturn) / trackingError : 0;
   }
 
   private generateAlertId(): string {
     return `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Helper methods for risk calculations
+  private calculatePositionCorrelation(pos1: Position, pos2: Position): number {
+    // Calculate correlation based on token characteristics
+    const token1 = pos1.token;
+    const token2 = pos2.token;
+    
+    if (token1.symbol === token2.symbol) return 1; // Perfect correlation for same token
+    
+    const token1Type = this.getTokenType(token1.symbol);
+    const token2Type = this.getTokenType(token2.symbol);
+    
+    if (token1Type === token2Type) {
+      return 0.7; // High correlation for same type
+    } else if (this.areTokensRelated(token1.symbol, token2.symbol)) {
+      return 0.5; // Medium correlation for related tokens
+    } else {
+      return 0.3; // Low correlation for unrelated tokens
+    }
+  }
+
+  private getProtocolRisk(token: string): number {
+    // Return protocol risk based on token characteristics
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 5; // Low risk for major tokens
+      case 'stable': return 2; // Very low risk for stablecoins
+      case 'mid': return 15; // Medium risk for mid-cap tokens
+      case 'small': return 30; // High risk for small-cap tokens
+      default: return 20; // Default risk
+    }
+  }
+
+  private getSmartContractRisk(token: string): number {
+    // Return smart contract risk based on token characteristics
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 3; // Low risk for major tokens
+      case 'stable': return 1; // Very low risk for stablecoins
+      case 'mid': return 12; // Medium risk for mid-cap tokens
+      case 'small': return 25; // High risk for small-cap tokens
+      default: return 15; // Default risk
+    }
+  }
+
+  private getTokenBeta(token: string): number {
+    // Return beta coefficient based on token type
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 1.0; // Market beta for major tokens
+      case 'stable': return 0.1; // Low beta for stablecoins
+      case 'mid': return 1.2; // Higher beta for mid-cap tokens
+      case 'small': return 1.5; // High beta for small-cap tokens
+      default: return 1.1; // Slightly above market beta
+    }
+  }
+
+  private calculateTrackingError(portfolio: Portfolio): number {
+    // Calculate tracking error vs benchmark
+    const portfolioVolatility = portfolio.metrics.volatility || 0.2;
+    const benchmarkVolatility = 0.15; // 15% benchmark volatility
+    
+    // Simplified tracking error calculation
+    return Math.abs(portfolioVolatility - benchmarkVolatility);
+  }
+
+  private getTokenType(token: string): string {
+    const majorTokens = ['ETH', 'BTC', 'USDC', 'USDT', 'DAI'];
+    const stableTokens = ['USDC', 'USDT', 'DAI', 'BUSD'];
+    
+    if (majorTokens.includes(token.toUpperCase())) {
+      return stableTokens.includes(token.toUpperCase()) ? 'stable' : 'major';
+    } else if (token.length > 6) {
+      return 'small'; // Long token names are usually small cap
+    } else {
+      return 'mid'; // Default to mid-cap
+    }
+  }
+
+  private areTokensRelated(token1: string, token2: string): boolean {
+    // Check if tokens are related (same ecosystem, etc.)
+    const ethereumTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'UNI', 'AAVE', 'COMP'];
+    const bitcoinTokens = ['BTC', 'WBTC'];
+    
+    const token1Ecosystem = this.getTokenEcosystem(token1);
+    const token2Ecosystem = this.getTokenEcosystem(token2);
+    
+    return token1Ecosystem === token2Ecosystem;
+  }
+
+  private getTokenEcosystem(token: string): string {
+    const ethereumTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'UNI', 'AAVE', 'COMP'];
+    const bitcoinTokens = ['BTC', 'WBTC'];
+    
+    if (ethereumTokens.includes(token.toUpperCase())) return 'ethereum';
+    if (bitcoinTokens.includes(token.toUpperCase())) return 'bitcoin';
+    return 'other';
   }
 
   private generateMitigationId(): string {

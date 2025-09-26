@@ -466,13 +466,43 @@ export class PortfolioAnalyzer {
   }
 
   private calculateCorrelationRisk(portfolio: Portfolio): number {
-    // Simplified correlation calculation
-    return 0.6; // Placeholder
+    if (portfolio.positions.length < 2) return 0;
+    
+    // Calculate average correlation between positions
+    let totalCorrelation = 0;
+    let pairCount = 0;
+    
+    for (let i = 0; i < portfolio.positions.length; i++) {
+      for (let j = i + 1; j < portfolio.positions.length; j++) {
+        const pos1 = portfolio.positions[i];
+        const pos2 = portfolio.positions[j];
+        
+        // Calculate correlation based on token similarity and market cap
+        const correlation = this.calculateTokenCorrelation(pos1, pos2);
+        totalCorrelation += correlation;
+        pairCount++;
+      }
+    }
+    
+    return pairCount > 0 ? totalCorrelation / pairCount : 0;
   }
 
   private calculateLiquidityRisk(portfolio: Portfolio): number {
-    // Simplified liquidity risk calculation
-    return 0.2; // Placeholder
+    if (portfolio.positions.length === 0) return 0;
+    
+    // Calculate weighted average liquidity risk
+    let totalWeightedRisk = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const liquidityRisk = this.getTokenLiquidityRisk(position.token);
+      const weight = position.allocation;
+      
+      totalWeightedRisk += liquidityRisk * weight;
+      totalWeight += weight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedRisk / totalWeight : 0;
   }
 
   private generateRiskRecommendations(factors: RiskAssessment['factors']): string[] {
@@ -488,23 +518,163 @@ export class PortfolioAnalyzer {
   }
 
   private estimateMaxDrawdown(portfolio: Portfolio): number {
-    // Simplified max drawdown estimation
-    return 0.15; // 15% placeholder
+    if (portfolio.positions.length === 0) return 0;
+    
+    // Calculate weighted average max drawdown based on position volatility
+    let totalWeightedDrawdown = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const tokenVolatility = this.getTokenVolatility(position.token);
+      const maxDrawdown = Math.min(tokenVolatility * 2, 0.5); // Cap at 50%
+      const weight = position.allocation;
+      
+      totalWeightedDrawdown += maxDrawdown * weight;
+      totalWeight += weight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedDrawdown / totalWeight : 0;
   }
 
   private estimateVolatility(portfolio: Portfolio): number {
-    // Simplified volatility estimation
-    return 0.25; // 25% placeholder
+    if (portfolio.positions.length === 0) return 0;
+    
+    // Calculate portfolio volatility using variance formula
+    let totalWeightedVolatility = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const tokenVolatility = this.getTokenVolatility(position.token);
+      const weight = position.allocation;
+      
+      totalWeightedVolatility += tokenVolatility * weight;
+      totalWeight += weight;
+    });
+    
+    const averageVolatility = totalWeight > 0 ? totalWeightedVolatility / totalWeight : 0;
+    
+    // Add diversification benefit (reduces volatility)
+    const diversificationFactor = Math.max(0.5, 1 - (portfolio.positions.length - 1) * 0.1);
+    
+    return averageVolatility * diversificationFactor;
   }
 
   private calculateBeta(portfolio: Portfolio): number {
-    // Simplified beta calculation
-    return 1.2; // Placeholder
+    if (portfolio.positions.length === 0) return 1;
+    
+    // Calculate weighted average beta
+    let totalWeightedBeta = 0;
+    let totalWeight = 0;
+    
+    portfolio.positions.forEach(position => {
+      const tokenBeta = this.getTokenBeta(position.token);
+      const weight = position.allocation;
+      
+      totalWeightedBeta += tokenBeta * weight;
+      totalWeight += weight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedBeta / totalWeight : 1;
   }
 
   private calculateSortinoRatio(return_: number, volatility: number): number {
     const riskFreeRate = 0.02;
     return volatility > 0 ? (return_ - riskFreeRate) / volatility : 0;
+  }
+
+  // Helper methods for token analysis
+  private calculateTokenCorrelation(pos1: Position, pos2: Position): number {
+    // Simplified correlation calculation based on token characteristics
+    const token1 = pos1.token;
+    const token2 = pos2.token;
+    
+    // Same token = perfect correlation
+    if (token1 === token2) return 1;
+    
+    // Different token types have different correlations
+    const token1Type = this.getTokenType(token1);
+    const token2Type = this.getTokenType(token2);
+    
+    if (token1Type === token2Type) {
+      return 0.7; // High correlation for same type
+    } else if (this.areTokensRelated(token1, token2)) {
+      return 0.5; // Medium correlation for related tokens
+    } else {
+      return 0.2; // Low correlation for unrelated tokens
+    }
+  }
+
+  private getTokenLiquidityRisk(token: string): number {
+    // Return liquidity risk based on token characteristics
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 0.1; // Low risk for major tokens
+      case 'stable': return 0.05; // Very low risk for stablecoins
+      case 'mid': return 0.3; // Medium risk for mid-cap tokens
+      case 'small': return 0.6; // High risk for small-cap tokens
+      default: return 0.4; // Default medium risk
+    }
+  }
+
+  private getTokenVolatility(token: string): number {
+    // Return historical volatility based on token type
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 0.3; // 30% volatility for major tokens
+      case 'stable': return 0.05; // 5% volatility for stablecoins
+      case 'mid': return 0.6; // 60% volatility for mid-cap tokens
+      case 'small': return 0.8; // 80% volatility for small-cap tokens
+      default: return 0.5; // 50% default volatility
+    }
+  }
+
+  private getTokenBeta(token: string): number {
+    // Return beta coefficient based on token type
+    const tokenType = this.getTokenType(token);
+    
+    switch (tokenType) {
+      case 'major': return 1.0; // Market beta for major tokens
+      case 'stable': return 0.1; // Low beta for stablecoins
+      case 'mid': return 1.2; // Higher beta for mid-cap tokens
+      case 'small': return 1.5; // High beta for small-cap tokens
+      default: return 1.1; // Slightly above market beta
+    }
+  }
+
+  private getTokenType(token: string): string {
+    // Simplified token classification
+    const majorTokens = ['ETH', 'BTC', 'USDC', 'USDT', 'DAI'];
+    const stableTokens = ['USDC', 'USDT', 'DAI', 'BUSD'];
+    
+    if (majorTokens.includes(token.toUpperCase())) {
+      return stableTokens.includes(token.toUpperCase()) ? 'stable' : 'major';
+    } else if (token.length > 6) {
+      return 'small'; // Long token names are usually small cap
+    } else {
+      return 'mid'; // Default to mid-cap
+    }
+  }
+
+  private areTokensRelated(token1: string, token2: string): boolean {
+    // Check if tokens are related (same ecosystem, etc.)
+    const ethereumTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'UNI', 'AAVE', 'COMP'];
+    const bitcoinTokens = ['BTC', 'WBTC'];
+    
+    const token1Ecosystem = this.getTokenEcosystem(token1);
+    const token2Ecosystem = this.getTokenEcosystem(token2);
+    
+    return token1Ecosystem === token2Ecosystem;
+  }
+
+  private getTokenEcosystem(token: string): string {
+    const ethereumTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'UNI', 'AAVE', 'COMP'];
+    const bitcoinTokens = ['BTC', 'WBTC'];
+    
+    if (ethereumTokens.includes(token.toUpperCase())) return 'ethereum';
+    if (bitcoinTokens.includes(token.toUpperCase())) return 'bitcoin';
+    return 'other';
   }
 
   private calculateSectorDistribution(positions: Position[]): Record<string, number> {
@@ -524,7 +694,7 @@ export class PortfolioAnalyzer {
       matrix[pos.token.symbol] = {};
       positions.forEach(otherPos => {
         matrix[pos.token.symbol][otherPos.token.symbol] = 
-          pos.token.symbol === otherPos.token.symbol ? 1 : 0.3; // Placeholder
+          pos.token.symbol === otherPos.token.symbol ? 1 : this.calculateTokenCorrelation(pos, otherPos);
       });
     });
     return matrix;

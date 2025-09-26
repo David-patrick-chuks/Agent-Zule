@@ -310,7 +310,7 @@ export class MarketPredictor {
         currentVolatility,
         predictedVolatility,
         volatilityTrend,
-        confidence: 0.7 // Placeholder confidence
+        confidence: this.calculatePredictionConfidence(data, currentVolatility, predictedVolatility)
       };
 
     } catch (error) {
@@ -508,8 +508,24 @@ export class MarketPredictor {
   }
 
   private calculateTrendDuration(data: Array<{ price: number; timestamp: Date }>, trend: string): number {
-    // Simplified duration calculation
-    return 24; // Placeholder - 24 hours
+    if (data.length < 2) return 0;
+    
+    // Calculate actual trend duration based on data
+    let trendStart = 0;
+    let currentTrend = trend;
+    
+    for (let i = 1; i < data.length; i++) {
+      const priceChange = data[i].price - data[i-1].price;
+      const currentDirection = priceChange > 0 ? 'bullish' : priceChange < 0 ? 'bearish' : 'sideways';
+      
+      if (currentDirection !== currentTrend) {
+        break;
+      }
+      trendStart = i;
+    }
+    
+    // Convert to hours (assuming hourly data)
+    return data.length - trendStart;
   }
 
   private calculateReturns(data: Array<{ price: number }>): number[] {
@@ -518,6 +534,48 @@ export class MarketPredictor {
       returns.push((data[i].price - data[i - 1].price) / data[i - 1].price);
     }
     return returns;
+  }
+
+  private calculatePredictionConfidence(
+    data: Array<{ price: number; timestamp: Date }>,
+    currentVolatility: number,
+    predictedVolatility: number
+  ): number {
+    if (data.length < 10) return 0.3; // Low confidence with little data
+    
+    // Calculate confidence based on data quality and volatility consistency
+    const dataQuality = Math.min(data.length / 100, 1); // More data = higher confidence
+    const volatilityConsistency = 1 - Math.abs(currentVolatility - predictedVolatility) / currentVolatility;
+    const trendConsistency = this.calculateTrendConsistency(data);
+    
+    // Weighted average of confidence factors
+    const confidence = (dataQuality * 0.4 + volatilityConsistency * 0.4 + trendConsistency * 0.2);
+    
+    return Math.max(0.1, Math.min(0.95, confidence)); // Cap between 10% and 95%
+  }
+
+  private calculateTrendConsistency(data: Array<{ price: number; timestamp: Date }>): number {
+    if (data.length < 3) return 0.5;
+    
+    let consistentMoves = 0;
+    let totalMoves = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const priceChange = data[i].price - data[i-1].price;
+      if (Math.abs(priceChange) > 0.001) { // Only count significant moves
+        totalMoves++;
+        
+        // Check if move is consistent with recent trend
+        if (i > 1) {
+          const prevChange = data[i-1].price - data[i-2].price;
+          if ((priceChange > 0 && prevChange > 0) || (priceChange < 0 && prevChange < 0)) {
+            consistentMoves++;
+          }
+        }
+      }
+    }
+    
+    return totalMoves > 0 ? consistentMoves / totalMoves : 0.5;
   }
 
   private calculateVolatility(returns: number[]): number {

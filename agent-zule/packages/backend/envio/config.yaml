@@ -1,0 +1,259 @@
+# Envio Indexer Configuration for Agent Zule
+# This configuration tracks DeFi events, portfolio changes, and cross-chain opportunities
+
+networks:
+  - name: monad-testnet
+    rpc_url: "https://testnet.monad.xyz"
+    chain_id: 123456789
+    start_block: 0
+    block_range: 1000
+    retry_attempts: 3
+    retry_delay: 1000
+
+  - name: ethereum-mainnet
+    rpc_url: "https://eth.llamarpc.com"
+    chain_id: 1
+    start_block: 19000000
+    block_range: 1000
+    retry_attempts: 3
+    retry_delay: 1000
+
+contracts:
+  # Portfolio Agent Contract
+  - name: PortfolioAgent
+    address: "0x..."
+    abi: "./abis/PortfolioAgent.json"
+    start_block: 0
+    events:
+      - PortfolioRebalanced
+      - PermissionGranted
+      - PermissionRevoked
+      - RecommendationCreated
+      - TradeExecuted
+
+  # DEX Contracts (Uniswap V3)
+  - name: UniswapV3Factory
+    address: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+    abi: "./abis/UniswapV3Factory.json"
+    start_block: 12369621
+    events:
+      - PoolCreated
+
+  # DEX Contracts (Uniswap V2)
+  - name: UniswapV2Factory
+    address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+    abi: "./abis/UniswapV2Factory.json"
+    start_block: 10000834
+    events:
+      - PairCreated
+
+  # ERC20 Token Contracts
+  - name: ERC20
+    abi: "./abis/ERC20.json"
+    events:
+      - Transfer
+      - Approval
+
+  # Cross-chain Bridge Contracts
+  - name: LayerZeroBridge
+    address: "0x..."
+    abi: "./abis/LayerZeroBridge.json"
+    start_block: 0
+    events:
+      - BridgeInitiated
+      - BridgeCompleted
+      - BridgeFailed
+
+handlers:
+  # Portfolio Events
+  - event: PortfolioRebalanced
+    handler: "./src/handlers/portfolio.ts"
+    description: "Handle portfolio rebalancing events"
+
+  - event: PermissionGranted
+    handler: "./src/handlers/permissions.ts"
+    description: "Handle permission grant events"
+
+  - event: PermissionRevoked
+    handler: "./src/handlers/permissions.ts"
+    description: "Handle permission revocation events"
+
+  - event: RecommendationCreated
+    handler: "./src/handlers/recommendations.ts"
+    description: "Handle AI recommendation creation"
+
+  - event: TradeExecuted
+    handler: "./src/handlers/trades.ts"
+    description: "Handle trade execution events"
+
+  # DEX Events
+  - event: PoolCreated
+    handler: "./src/handlers/dex.ts"
+    description: "Handle new liquidity pool creation"
+
+  - event: PairCreated
+    handler: "./src/handlers/dex.ts"
+    description: "Handle new trading pair creation"
+
+  - event: Transfer
+    handler: "./src/handlers/tokens.ts"
+    description: "Handle token transfer events"
+
+  - event: Approval
+    handler: "./src/handlers/tokens.ts"
+    description: "Handle token approval events"
+
+  # Cross-chain Events
+  - event: BridgeInitiated
+    handler: "./src/handlers/bridge.ts"
+    description: "Handle cross-chain bridge initiation"
+
+  - event: BridgeCompleted
+    handler: "./src/handlers/bridge.ts"
+    description: "Handle cross-chain bridge completion"
+
+  - event: BridgeFailed
+    handler: "./src/handlers/bridge.ts"
+    description: "Handle cross-chain bridge failures"
+
+# Database Configuration
+database:
+  type: "mongodb"
+  uri: "${MONGO_URI}"
+  name: "agent_zule_indexer"
+  collections:
+    - name: "portfolio_events"
+      indexes:
+        - field: "userId"
+          type: "text"
+        - field: "timestamp"
+          type: "date"
+        - field: "eventType"
+          type: "text"
+
+    - name: "permission_events"
+      indexes:
+        - field: "userId"
+          type: "text"
+        - field: "timestamp"
+          type: "date"
+        - field: "action"
+          type: "text"
+
+    - name: "trade_events"
+      indexes:
+        - field: "userId"
+          type: "text"
+        - field: "timestamp"
+          type: "date"
+        - field: "tokenIn"
+          type: "text"
+        - field: "tokenOut"
+          type: "text"
+
+    - name: "dex_events"
+      indexes:
+        - field: "poolAddress"
+          type: "text"
+        - field: "timestamp"
+          type: "date"
+        - field: "eventType"
+          type: "text"
+
+    - name: "bridge_events"
+      indexes:
+        - field: "userId"
+          type: "text"
+        - field: "timestamp"
+          type: "date"
+        - field: "sourceChain"
+          type: "text"
+        - field: "targetChain"
+          type: "text"
+
+# API Configuration
+api:
+  port: 8080
+  cors:
+    origin: "*"
+    methods: ["GET", "POST", "PUT", "DELETE"]
+    headers: ["Content-Type", "Authorization"]
+
+  # GraphQL Configuration
+  graphql:
+    enabled: true
+    endpoint: "/graphql"
+    playground: true
+    introspection: true
+
+  # REST API Configuration
+  rest:
+    enabled: true
+    endpoints:
+      - path: "/api/portfolio"
+        method: "GET"
+        description: "Get portfolio events"
+      - path: "/api/recommendations"
+        method: "GET"
+        description: "Get recommendation events"
+      - path: "/api/trades"
+        method: "GET"
+        description: "Get trade events"
+      - path: "/api/cross-chain"
+        method: "GET"
+        description: "Get cross-chain events"
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics:
+    - name: "events_processed"
+      type: "counter"
+      description: "Total events processed"
+    - name: "processing_time"
+      type: "histogram"
+      description: "Event processing time"
+    - name: "errors"
+      type: "counter"
+      description: "Total errors encountered"
+
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 30
+
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"
+
+# Rate Limiting
+rate_limiting:
+  enabled: true
+  requests_per_minute: 100
+  burst_size: 20
+
+# Caching
+caching:
+  enabled: true
+  ttl: 300 # 5 minutes
+  max_size: 1000
+
+# Security
+security:
+  api_key_required: true
+  allowed_origins:
+    - "http://localhost:3000"
+    - "https://agent-zule.xyz"
+  
+  rate_limiting:
+    window_ms: 60000
+    max_requests: 100
+
+# Environment Variables
+env:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  MONGO_URI: "${MONGO_URI}"
+  REDIS_URL: "${REDIS_URL}"
+  API_KEY: "${ENVIO_API_KEY}"

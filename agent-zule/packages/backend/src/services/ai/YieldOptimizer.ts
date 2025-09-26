@@ -406,8 +406,26 @@ export class YieldOptimizer {
   }
 
   private estimateMigrationCost(fromToken: string, toToken: string): number {
-    // Simplified migration cost estimation
-    return 0.001; // 0.1% placeholder
+    // Calculate migration cost based on token types and liquidity
+    const fromTokenType = this.getTokenType(fromToken);
+    const toTokenType = this.getTokenType(toToken);
+    
+    let baseCost = 0.001; // 0.1% base cost
+    
+    // Adjust cost based on token types
+    if (fromTokenType === 'small' || toTokenType === 'small') {
+      baseCost *= 2; // Higher cost for small cap tokens
+    }
+    
+    if (fromTokenType !== toTokenType) {
+      baseCost *= 1.5; // Higher cost for cross-type migrations
+    }
+    
+    // Add liquidity factor
+    const liquidityFactor = this.getLiquidityFactor(fromToken, toToken);
+    baseCost *= liquidityFactor;
+    
+    return Math.min(baseCost, 0.01); // Cap at 1%
   }
 
   private getSourceDescription(source: YieldSource | null): string {
@@ -436,18 +454,105 @@ export class YieldOptimizer {
   }
 
   private estimateGasCost(fromToken: string, toToken: string): number {
-    // Simplified gas cost estimation
-    return 0.005; // 0.005 ETH placeholder
+    // Calculate gas cost based on operation complexity
+    let baseGasCost = 0.002; // 0.002 ETH base cost
+    
+    // Adjust based on token types
+    const fromTokenType = this.getTokenType(fromToken);
+    const toTokenType = this.getTokenType(toToken);
+    
+    if (fromTokenType === 'small' || toTokenType === 'small') {
+      baseGasCost *= 1.5; // Higher gas for small cap tokens
+    }
+    
+    // Add complexity factor for cross-protocol operations
+    if (this.isCrossProtocolOperation(fromToken, toToken)) {
+      baseGasCost *= 2;
+    }
+    
+    return baseGasCost;
   }
 
   private estimateSlippage(tokenAddress: string, amount: number): number {
-    // Simplified slippage estimation based on token liquidity
-    return 0.005; // 0.5% placeholder
+    // Calculate slippage based on token liquidity and trade size
+    const tokenType = this.getTokenType(tokenAddress);
+    let baseSlippage = 0.001; // 0.1% base slippage
+    
+    // Adjust based on token type
+    switch (tokenType) {
+      case 'major':
+        baseSlippage = 0.001; // Very low slippage for major tokens
+        break;
+      case 'stable':
+        baseSlippage = 0.0005; // Minimal slippage for stablecoins
+        break;
+      case 'mid':
+        baseSlippage = 0.005; // Medium slippage for mid-cap tokens
+        break;
+      case 'small':
+        baseSlippage = 0.02; // High slippage for small-cap tokens
+        break;
+      default:
+        baseSlippage = 0.01; // Default slippage
+    }
+    
+    // Adjust based on trade size
+    const sizeMultiplier = Math.min(amount / 10000, 2); // Scale up to 2x for large trades
+    baseSlippage *= (1 + sizeMultiplier);
+    
+    return Math.min(baseSlippage, 0.05); // Cap at 5%
   }
 
   private getCurrentYield(tokenAddress: string): number {
     const source = this.findYieldSource(tokenAddress);
     return source?.apy || 0;
+  }
+
+  // Helper methods for token analysis
+  private getTokenType(token: string): string {
+    const majorTokens = ['ETH', 'BTC', 'USDC', 'USDT', 'DAI'];
+    const stableTokens = ['USDC', 'USDT', 'DAI', 'BUSD'];
+    
+    if (majorTokens.includes(token.toUpperCase())) {
+      return stableTokens.includes(token.toUpperCase()) ? 'stable' : 'major';
+    } else if (token.length > 6) {
+      return 'small'; // Long token names are usually small cap
+    } else {
+      return 'mid'; // Default to mid-cap
+    }
+  }
+
+  private getLiquidityFactor(fromToken: string, toToken: string): number {
+    const fromType = this.getTokenType(fromToken);
+    const toType = this.getTokenType(toToken);
+    
+    // Higher liquidity factor for more liquid tokens
+    const liquidityFactors = {
+      'major': 0.8,
+      'stable': 0.6,
+      'mid': 1.2,
+      'small': 2.0
+    };
+    
+    return (liquidityFactors[fromType] + liquidityFactors[toType]) / 2;
+  }
+
+  private isCrossProtocolOperation(fromToken: string, toToken: string): boolean {
+    // Check if operation involves different protocols
+    const fromProtocol = this.getTokenProtocol(fromToken);
+    const toProtocol = this.getTokenProtocol(toToken);
+    
+    return fromProtocol !== toProtocol;
+  }
+
+  private getTokenProtocol(token: string): string {
+    // Simplified protocol classification
+    const ethereumTokens = ['ETH', 'USDC', 'USDT', 'DAI', 'UNI', 'AAVE', 'COMP'];
+    const bitcoinTokens = ['BTC', 'WBTC'];
+    
+    if (ethereumTokens.includes(token.toUpperCase())) return 'ethereum';
+    if (bitcoinTokens.includes(token.toUpperCase())) return 'bitcoin';
+    return 'other';
   }
 
   private getCurrentSource(tokenAddress: string): string {
