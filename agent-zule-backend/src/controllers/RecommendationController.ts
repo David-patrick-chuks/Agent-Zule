@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { Logger } from '../utils/Logger';
-import { PortfolioAnalyzer } from '../services/ai/PortfolioAnalyzer';
-import { YieldOptimizer } from '../services/ai/YieldOptimizer';
-import { DCAManager } from '../services/ai/DCAManager';
-import { RiskAssessor } from '../services/ai/RiskAssessor';
-import { MarketPredictor } from '../services/ai/MarketPredictor';
-import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
-import { Recommendation } from '../models/Recommendation';
 import { Portfolio } from '../models/Portfolio';
+import { Recommendation } from '../models/Recommendation';
+import { DCAManager } from '../services/ai/DCAManager';
+import { MarketPredictor } from '../services/ai/MarketPredictor';
+import { PortfolioAnalyzer } from '../services/ai/PortfolioAnalyzer';
+import { RiskAssessor } from '../services/ai/RiskAssessor';
+import { YieldOptimizer } from '../services/ai/YieldOptimizer';
+import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
+import { Logger } from '../utils/Logger';
 
 export class RecommendationController {
   private logger = Logger.getInstance();
@@ -359,7 +359,7 @@ export class RecommendationController {
       this.logger.logApiRequest('GET', '/api/recommendations/analytics', 200, 0, { userId, timeframe });
 
       // Calculate timeframe
-      const days = parseInt(timeframe as string.replace('d', ''));
+      const days = parseInt((timeframe as string).replace('d', ''));
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
       // Get analytics data

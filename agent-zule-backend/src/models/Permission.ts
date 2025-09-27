@@ -116,19 +116,16 @@ const PermissionAuditEntrySchema = new Schema({
 const PermissionSchema = new Schema<IPermission>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   agentId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
     enum: ['trade_execution', 'portfolio_rebalancing', 'yield_optimization', 'dca_execution', 'risk_management', 'emergency_actions'],
-    required: true,
-    index: true
+    required: true
   },
   scope: {
     tokens: [String],
@@ -144,16 +141,14 @@ const PermissionSchema = new Schema<IPermission>({
   status: {
     type: String,
     enum: ['active', 'revoked', 'pending', 'expired'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   grantedAt: {
     type: Date,
     default: Date.now
   },
   expiresAt: {
-    type: Date,
-    index: { expireAfterSeconds: 0 }
+    type: Date
   },
   revokedAt: Date,
   metadata: {
@@ -181,7 +176,7 @@ PermissionSchema.index({ agentId: 1 });
 PermissionSchema.index({ type: 1 });
 PermissionSchema.index({ status: 1 });
 PermissionSchema.index({ grantedAt: -1 });
-PermissionSchema.index({ expiresAt: 1 });
+PermissionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Compound indexes
 PermissionSchema.index({ userId: 1, status: 1 });

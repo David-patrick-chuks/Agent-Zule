@@ -191,19 +191,16 @@ const AIReasoningSchema = new Schema({
 const RecommendationSchema = new Schema<IRecommendation>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   portfolioId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
     enum: ['rebalance', 'yield_optimization', 'dca_strategy', 'risk_reduction', 'position_adjustment'],
-    required: true,
-    index: true
+    required: true
   },
   title: {
     type: String,
@@ -232,26 +229,22 @@ const RecommendationSchema = new Schema<IRecommendation>({
   riskLevel: {
     type: String,
     enum: ['low', 'medium', 'high', 'critical'],
-    required: true,
-    index: true
+    required: true
   },
   confidence: {
     type: Number,
     required: true,
     min: 0,
-    max: 1,
-    index: true
+    max: 1
   },
   expectedImpact: {
     type: Number,
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'expired', 'executed', 'cancelled'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   communityVotes: [CommunityVoteSchema],
   aiReasoning: {
@@ -259,8 +252,7 @@ const RecommendationSchema = new Schema<IRecommendation>({
     required: true
   },
   expiresAt: {
-    type: Date,
-    index: { expireAfterSeconds: 0 }
+    type: Date
   },
   executedAt: Date,
   metadata: {
@@ -291,7 +283,7 @@ RecommendationSchema.index({ riskLevel: 1 });
 RecommendationSchema.index({ confidence: -1 });
 RecommendationSchema.index({ expectedImpact: -1 });
 RecommendationSchema.index({ createdAt: -1 });
-RecommendationSchema.index({ expiresAt: 1 });
+RecommendationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Compound indexes
 RecommendationSchema.index({ userId: 1, status: 1 });

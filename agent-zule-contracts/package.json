@@ -24,29 +24,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@metamask/delegation-toolkit": "^0.13.0",
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/contracts-upgradeable": "^5.4.0",
-    "dotenv": "^17.2.2",
-    "ethers": "^6.8.0",
-    "forge-std": "^1.1.2",
-    "hardhat": "^2.26.3",
-    "prb-math": "^2.4.3",
-    "solmate": "^6.8.0"
-  },
-  "devDependencies": {
-    "@nomicfoundation/hardhat-verify": "^2.1.1",
-    "@types/node": "^24.5.2",
-    "foundry": "^4.7.0",
-    "hardhat-abi-exporter": "^2.11.0",
-    "hardhat-contract-sizer": "^2.10.1",
-    "hardhat-deploy": "^1.0.4",
-    "hardhat-gas-reporter": "^2.3.0",
-    "hardhat-tracer": "^3.3.0",
-    "solidity-coverage": "^0.8.16",
-    "typescript": "^5.9.2"
-  }
+  "type": "commonjs"
 }

@@ -284,7 +284,7 @@ export class ExecutionController {
       this.logger.logApiRequest('GET', '/api/execute/stats', 200, 0, { userId, timeframe });
 
       // Calculate timeframe
-      const days = parseInt(timeframe as string.replace('d', ''));
+      const days = parseInt((timeframe as string).replace('d', ''));
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
       // Get statistics

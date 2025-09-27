@@ -142,25 +142,21 @@ const TransactionMetadataSchema = new Schema({
 const TransactionSchema = new Schema<ITransaction>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   portfolioId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
     enum: ['buy', 'sell', 'swap', 'stake', 'unstake', 'claim', 'rebalance', 'deposit', 'withdrawal', 'emergency_stop'],
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed', 'cancelled'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   details: {
     type: TransactionDetailsSchema,

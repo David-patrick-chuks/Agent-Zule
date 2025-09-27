@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { Position, PortfolioMetrics, PortfolioStrategy, RiskProfile } from '../types/Portfolio';
+import { PortfolioMetrics, PortfolioStrategy, Position, RiskProfile } from '../types/Portfolio';
 
 export interface IPortfolio extends Document {
   userId: string;
@@ -137,8 +137,7 @@ const PortfolioChangeSchema = new Schema({
 const PortfolioSchema = new Schema<IPortfolio>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   name: {
     type: String,
@@ -164,8 +163,7 @@ const PortfolioSchema = new Schema<IPortfolio>({
   },
   isActive: {
     type: Boolean,
-    default: true,
-    index: true
+    default: true
   },
   lastRebalanced: Date,
   nextRebalancingDate: Date,
