@@ -1,0 +1,19 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["node_modules", "lib"]
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "prb-math/=node_modules/prb-math/",
+    "solmate/=node_modules/solmate/",
+]
+
+# Test configuration
+fuzz = { runs = 1000 }
+invariant = { runs = 256, depth = 15 }
+
+# Gas reporting
+gas_reports = ["*"]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
