@@ -1,16 +1,20 @@
 import { Portfolio, ApiResponse } from '@/lib/types';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { API_ENDPOINTS, BACKEND_CONFIG } from '@/lib/constants';
 
 class PortfolioService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    this.baseUrl = BACKEND_CONFIG.baseUrl;
   }
 
-  async getPortfolio(userAddress: string): Promise<ApiResponse<Portfolio>> {
+  async getPortfolios(userAddress?: string): Promise<ApiResponse<Portfolio[]>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolio}?address=${userAddress}`, {
+      const url = userAddress 
+        ? `${this.baseUrl}${API_ENDPOINTS.portfolios}?address=${userAddress}`
+        : `${this.baseUrl}${API_ENDPOINTS.portfolios}`;
+        
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -28,17 +32,13 @@ class PortfolioService {
     }
   }
 
-  async refreshPortfolio(userAddress: string): Promise<ApiResponse<Portfolio>> {
+  async getPortfolio(portfolioId: string): Promise<ApiResponse<Portfolio>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolio}`, {
-        method: 'POST',
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}/${portfolioId}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action: 'refresh',
-          userAddress,
-        }),
       });
 
       if (!response.ok) {
@@ -47,22 +47,19 @@ class PortfolioService {
 
       return await response.json();
     } catch (error) {
-      console.error('Portfolio refresh error:', error);
-      throw new Error('Failed to refresh portfolio');
+      console.error('Portfolio service error:', error);
+      throw new Error('Failed to fetch portfolio data');
     }
   }
 
-  async rebalancePortfolio(userAddress: string): Promise<ApiResponse<Portfolio>> {
+  async createPortfolio(portfolioData: Partial<Portfolio>): Promise<ApiResponse<Portfolio>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolio}`, {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action: 'rebalance',
-          userAddress,
-        }),
+        body: JSON.stringify(portfolioData),
       });
 
       if (!response.ok) {
@@ -71,14 +68,55 @@ class PortfolioService {
 
       return await response.json();
     } catch (error) {
-      console.error('Portfolio rebalance error:', error);
-      throw new Error('Failed to rebalance portfolio');
+      console.error('Portfolio creation error:', error);
+      throw new Error('Failed to create portfolio');
     }
   }
 
-  async getPortfolioHistory(userAddress: string, timeframe: string = '7d'): Promise<ApiResponse<any[]>> {
+  async updatePortfolio(portfolioId: string, portfolioData: Partial<Portfolio>): Promise<ApiResponse<Portfolio>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolio}/history?address=${userAddress}&timeframe=${timeframe}`, {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}/${portfolioId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(portfolioData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Portfolio update error:', error);
+      throw new Error('Failed to update portfolio');
+    }
+  }
+
+  async analyzePortfolio(portfolioId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}/${portfolioId}/analysis`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Portfolio analysis error:', error);
+      throw new Error('Failed to analyze portfolio');
+    }
+  }
+
+  async getPortfolioHistory(portfolioId: string, timeframe: string = '7d'): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}/${portfolioId}/history?timeframe=${timeframe}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -96,10 +134,10 @@ class PortfolioService {
     }
   }
 
-  async getPortfolioPerformance(userAddress: string): Promise<ApiResponse<any>> {
+  async deletePortfolio(portfolioId: string): Promise<ApiResponse<void>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolio}/performance?address=${userAddress}`, {
-        method: 'GET',
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.portfolios}/${portfolioId}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -111,8 +149,56 @@ class PortfolioService {
 
       return await response.json();
     } catch (error) {
-      console.error('Portfolio performance error:', error);
-      throw new Error('Failed to fetch portfolio performance');
+      console.error('Portfolio deletion error:', error);
+      throw new Error('Failed to delete portfolio');
+    }
+  }
+
+  // AI-powered methods
+  async analyzeWithAI(portfolioId: string, analysisParams?: any): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.aiAnalyze}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          portfolioId,
+          ...analysisParams,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      throw new Error('Failed to analyze portfolio with AI');
+    }
+  }
+
+  async assessRisk(portfolioId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.aiRiskAssessment}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          portfolioId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Risk assessment error:', error);
+      throw new Error('Failed to assess portfolio risk');
     }
   }
 }

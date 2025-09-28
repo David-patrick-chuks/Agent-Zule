@@ -1,16 +1,20 @@
-import { Delegation, Permission, ApiResponse } from '@/lib/types';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { API_ENDPOINTS, BACKEND_CONFIG } from '@/lib/constants';
+import { ApiResponse, Permission } from '@/lib/types';
 
 class PermissionService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    this.baseUrl = BACKEND_CONFIG.baseUrl;
   }
 
-  async getDelegations(userAddress: string): Promise<ApiResponse<Delegation[]>> {
+  async getPermissions(userAddress?: string): Promise<ApiResponse<Permission[]>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}?address=${userAddress}`, {
+      const url = userAddress 
+        ? `${this.baseUrl}${API_ENDPOINTS.permissions}?address=${userAddress}`
+        : `${this.baseUrl}${API_ENDPOINTS.permissions}`;
+        
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -23,123 +27,14 @@ class PermissionService {
 
       return await response.json();
     } catch (error) {
-      console.error('Delegations service error:', error);
-      throw new Error('Failed to fetch delegations');
+      console.error('Permissions service error:', error);
+      throw new Error('Failed to fetch permissions');
     }
   }
 
-  async createDelegation(
-    userAddress: string,
-    permissions: Permission[],
-    riskSettings: any
-  ): Promise<ApiResponse<Delegation>> {
+  async getPermission(permissionId: string): Promise<ApiResponse<Permission>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'create',
-          userAddress,
-          permissions,
-          riskSettings,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Create delegation error:', error);
-      throw new Error('Failed to create delegation');
-    }
-  }
-
-  async updateDelegation(
-    delegationId: string,
-    permissions: Permission[],
-    riskSettings: any
-  ): Promise<ApiResponse<Delegation>> {
-    try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'update',
-          delegationId,
-          permissions,
-          riskSettings,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Update delegation error:', error);
-      throw new Error('Failed to update delegation');
-    }
-  }
-
-  async revokeDelegation(delegationId: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'revoke',
-          delegationId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Revoke delegation error:', error);
-      throw new Error('Failed to revoke delegation');
-    }
-  }
-
-  async autoRevokeDelegation(delegationId: string, reason: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'auto_revoke',
-          delegationId,
-          reason,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Auto-revoke delegation error:', error);
-      throw new Error('Failed to auto-revoke delegation');
-    }
-  }
-
-  async getDelegationHistory(userAddress: string): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}/history?address=${userAddress}`, {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}/${permissionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -152,18 +47,57 @@ class PermissionService {
 
       return await response.json();
     } catch (error) {
-      console.error('Delegation history error:', error);
-      throw new Error('Failed to fetch delegation history');
+      console.error('Permission service error:', error);
+      throw new Error('Failed to fetch permission');
     }
   }
 
-  async checkPermissionStatus(
-    userAddress: string,
-    permissionType: string
-  ): Promise<ApiResponse<boolean>> {
+  async createPermission(permissionData: Partial<Permission>): Promise<ApiResponse<Permission>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.delegations}/check?address=${userAddress}&permission=${permissionType}`, {
-        method: 'GET',
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(permissionData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create permission error:', error);
+      throw new Error('Failed to create permission');
+    }
+  }
+
+  async updatePermission(permissionId: string, permissionData: Partial<Permission>): Promise<ApiResponse<Permission>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}/${permissionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(permissionData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Update permission error:', error);
+      throw new Error('Failed to update permission');
+    }
+  }
+
+  async revokePermission(permissionId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}/${permissionId}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -175,8 +109,49 @@ class PermissionService {
 
       return await response.json();
     } catch (error) {
-      console.error('Permission check error:', error);
-      throw new Error('Failed to check permission status');
+      console.error('Revoke permission error:', error);
+      throw new Error('Failed to revoke permission');
+    }
+  }
+
+  async addCondition(permissionId: string, condition: any): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}/${permissionId}/conditions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(condition),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Add condition error:', error);
+      throw new Error('Failed to add condition');
+    }
+  }
+
+  async removeCondition(permissionId: string, conditionId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.permissions}/${permissionId}/conditions/${conditionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Remove condition error:', error);
+      throw new Error('Failed to remove condition');
     }
   }
 }

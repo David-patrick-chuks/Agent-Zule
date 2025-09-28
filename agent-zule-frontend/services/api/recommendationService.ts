@@ -1,11 +1,11 @@
 import { AIRecommendation, ApiResponse } from '@/lib/types';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { API_ENDPOINTS, BACKEND_CONFIG } from '@/lib/constants';
 
 class RecommendationService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    this.baseUrl = BACKEND_CONFIG.baseUrl;
   }
 
   async getRecommendations(userAddress: string, status?: string): Promise<ApiResponse<AIRecommendation[]>> {
@@ -33,20 +33,58 @@ class RecommendationService {
     }
   }
 
+  async approveRecommendation(recommendationId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.recommendations}/${recommendationId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Approve recommendation error:', error);
+      throw new Error('Failed to approve recommendation');
+    }
+  }
+
+  async rejectRecommendation(recommendationId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.recommendations}/${recommendationId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Reject recommendation error:', error);
+      throw new Error('Failed to reject recommendation');
+    }
+  }
+
   async voteOnRecommendation(
     recommendationId: string, 
     vote: 'approve' | 'reject', 
     reason?: string
   ): Promise<ApiResponse<any>> {
     try {
-      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.recommendations}`, {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.recommendations}/${recommendationId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'vote',
-          recommendationId,
           vote,
           reason,
         }),
@@ -144,6 +182,52 @@ class RecommendationService {
     } catch (error) {
       console.error('Community votes error:', error);
       throw new Error('Failed to fetch community votes');
+    }
+  }
+
+  // AI-powered methods
+  async optimizeYield(portfolioId: string, optimizationParams?: any): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.aiOptimizeYield}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          portfolioId,
+          ...optimizationParams,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Yield optimization error:', error);
+      throw new Error('Failed to optimize yield');
+    }
+  }
+
+  async createDCAStrategy(dcaParams: any): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${this.baseUrl}${API_ENDPOINTS.aiDcaStrategy}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dcaParams),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('DCA strategy creation error:', error);
+      throw new Error('Failed to create DCA strategy');
     }
   }
 }

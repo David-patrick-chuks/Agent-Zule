@@ -1,129 +1,39 @@
 // Constants for Agent Zule Frontend
+// This file is kept for backward compatibility
+// New code should use the config.ts file instead
 
-export const APP_CONFIG = {
-  name: 'Agent Zule',
-  description: 'AI-Powered Portfolio Rebalancing Agent on Monad',
-  version: '1.0.0',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-} as const;
+import { config } from './config';
 
-export const FRAME_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_FRAME_URL || 'http://localhost:3000',
-  imageAspectRatio: '1.91:1' as const,
-  maxButtons: 4,
-} as const;
+export const APP_CONFIG = config.app;
+export const BACKEND_CONFIG = config.backend;
 
-export const MONAD_CONFIG = {
-  chainId: 0x1a4, // Monad testnet chain ID
-  chainName: 'Monad Testnet',
-  rpcUrl: process.env.NEXT_PUBLIC_MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz',
-  explorerUrl: 'https://testnet.monadexplorer.com',
-  nativeCurrency: {
-    name: 'Monad',
-    symbol: 'MON',
-    decimals: 18,
-  },
-} as const;
-
-export const METAMASK_CONFIG = {
-  dappMetadata: {
-    name: APP_CONFIG.name,
-    url: APP_CONFIG.url,
-    iconUrl: `${APP_CONFIG.url}/icon-512.png`,
-  },
-  infuraAPIKey: process.env.NEXT_PUBLIC_INFURA_API_KEY,
-} as const;
-
-export const ENVIO_CONFIG = {
-  graphqlEndpoint: process.env.NEXT_PUBLIC_ENVIO_GRAPHQL_URL || 'http://localhost:4000/graphql',
-  subscriptionEndpoint: process.env.NEXT_PUBLIC_ENVIO_WS_URL || 'ws://localhost:4000/graphql',
-} as const;
+export const FRAME_CONFIG = config.frame;
+export const MONAD_CONFIG = config.monad;
+export const METAMASK_CONFIG = config.metamask;
+export const ENVIO_CONFIG = config.envio;
 
 export const API_ENDPOINTS = {
-  portfolio: '/api/portfolio',
-  recommendations: '/api/recommendations',
-  delegations: '/api/delegations',
-  execute: '/api/execute',
-  webhook: '/api/webhook',
+  // Backend API endpoints (matching backend structure)
+  portfolios: '/api/v1/portfolios',
+  recommendations: '/api/v1/recommendations',
+  permissions: '/api/v1/permissions',
+  executions: '/api/v1/executions',
+  health: '/api/v1/health',
+  // AI endpoints
+  aiAnalyze: '/api/v1/ai/analyze',
+  aiOptimizeYield: '/api/v1/ai/optimize-yield',
+  aiDcaStrategy: '/api/v1/ai/dca-strategy',
+  aiRiskAssessment: '/api/v1/ai/risk-assessment',
+  // WebSocket endpoints
+  wsPortfolio: '/api/v1/ws/portfolio',
+  wsRecommendations: '/api/v1/ws/recommendations',
+  // Frame endpoints
   frame: '/api/frame',
 } as const;
 
-export const RISK_LEVELS = {
-  low: {
-    label: 'Low Risk',
-    color: 'green',
-    maxVolatility: 0.1,
-    maxSlippage: 0.5,
-  },
-  medium: {
-    label: 'Medium Risk',
-    color: 'yellow',
-    maxVolatility: 0.25,
-    maxSlippage: 1.0,
-  },
-  high: {
-    label: 'High Risk',
-    color: 'red',
-    maxVolatility: 0.5,
-    maxSlippage: 2.0,
-  },
-} as const;
-
-export const RECOMMENDATION_TYPES = {
-  rebalance: {
-    label: 'Portfolio Rebalancing',
-    icon: '⚖️',
-    description: 'Optimize portfolio allocation',
-  },
-  yield_optimization: {
-    label: 'Yield Optimization',
-    icon: '📈',
-    description: 'Maximize yield opportunities',
-  },
-  dca: {
-    label: 'Dollar Cost Averaging',
-    icon: '💰',
-    description: 'Systematic investment strategy',
-  },
-  risk_management: {
-    label: 'Risk Management',
-    icon: '🛡️',
-    description: 'Protect against market volatility',
-  },
-} as const;
-
-export const PERMISSION_TYPES = {
-  swap: {
-    label: 'Token Swaps',
-    description: 'Execute token swaps',
-    icon: '🔄',
-  },
-  add_liquidity: {
-    label: 'Add Liquidity',
-    description: 'Add liquidity to pools',
-    icon: '💧',
-  },
-  remove_liquidity: {
-    label: 'Remove Liquidity',
-    description: 'Remove liquidity from pools',
-    icon: '🚰',
-  },
-  stake: {
-    label: 'Staking',
-    description: 'Stake tokens for rewards',
-    icon: '🏦',
-  },
-  unstake: {
-    label: 'Unstaking',
-    description: 'Unstake tokens',
-    icon: '🏧',
-  },
-  transfer: {
-    label: 'Transfers',
-    description: 'Transfer tokens',
-    icon: '📤',
-  },
-} as const;
+export const RISK_LEVELS = config.risk.levels;
+export const RECOMMENDATION_TYPES = config.recommendations.types;
+export const PERMISSION_TYPES = config.permissions.types;
 
 export const FRAME_BUTTONS = {
   join: {
@@ -152,34 +62,7 @@ export const FRAME_BUTTONS = {
   },
 } as const;
 
-export const ANIMATION_DURATIONS = {
-  fast: 150,
-  normal: 300,
-  slow: 500,
-} as const;
-
-export const POLLING_INTERVALS = {
-  portfolio: 30000, // 30 seconds
-  recommendations: 60000, // 1 minute
-  marketData: 10000, // 10 seconds
-  delegations: 60000, // 1 minute
-} as const;
-
-export const ERROR_MESSAGES = {
-  walletNotConnected: 'Please connect your wallet to continue',
-  insufficientBalance: 'Insufficient balance for this transaction',
-  transactionFailed: 'Transaction failed. Please try again.',
-  networkError: 'Network error. Please check your connection.',
-  unauthorized: 'You are not authorized to perform this action',
-  delegationExpired: 'Delegation has expired. Please renew.',
-  highVolatility: 'High volatility detected. Delegation auto-revoked.',
-} as const;
-
-export const SUCCESS_MESSAGES = {
-  walletConnected: 'Wallet connected successfully',
-  delegationGranted: 'Delegation granted successfully',
-  delegationRevoked: 'Delegation revoked successfully',
-  tradeExecuted: 'Trade executed successfully',
-  recommendationApproved: 'Recommendation approved',
-  recommendationRejected: 'Recommendation rejected',
-} as const;
+export const ANIMATION_DURATIONS = config.ui.animationDurations;
+export const POLLING_INTERVALS = config.ui.pollingIntervals;
+export const ERROR_MESSAGES = config.errors;
+export const SUCCESS_MESSAGES = config.success;
