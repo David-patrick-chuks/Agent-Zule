@@ -1,24 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Dashboard } from '@/components/dashboard/Dashboard';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dashboard } from '@/components/dashboard/Dashboard';
 import { Web3State } from '@/lib/types';
 import { apiClient } from '@/services/api/apiClient';
 import { walletService } from '@/services/web3/walletService';
-import { 
-  Wallet, 
-  Bot, 
-  AlertTriangle, 
-  CheckCircle, 
-  Loader2,
-  TrendingUp,
-  Shield,
-  Activity
+import {
+    Activity,
+    AlertTriangle,
+    Bot,
+    CheckCircle,
+    Loader2,
+    Shield,
+    Wallet
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function App() {
   const [walletState, setWalletState] = useState<Web3State>({
@@ -128,18 +127,18 @@ export function App() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Bot className="w-8 h-8 text-primary" />
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Bot className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
               <div>
-                <h1 className="text-xl font-bold">Agent Zule</h1>
-                <p className="text-sm text-muted-foreground">AI Portfolio Platform</p>
+                <h1 className="text-lg sm:text-xl font-bold">Agent Zule</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">AI Portfolio Platform</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Health Status */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Health Status - Hidden on mobile, shown on tablet+ */}
               {healthStatus && (
-                <div className="hidden md:flex items-center space-x-2">
+                <div className="hidden lg:flex items-center space-x-2">
                   <div className="flex items-center space-x-1">
                     {getHealthStatusIcon(healthStatus.api)}
                     <span className="text-xs">API</span>
@@ -157,29 +156,34 @@ export function App() {
 
               {/* Wallet Connection */}
               {walletState.isConnected ? (
-                <div className="flex items-center space-x-2">
-                  <Badge variant="default" className="flex items-center space-x-1">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <Badge variant="default" className="flex items-center space-x-1 text-xs">
                     <Wallet className="w-3 h-3" />
                     <span className="hidden sm:inline">
-                      {walletState.account?.slice(0, 6)}...{walletState.account?.slice(-4)}
+                      {walletState.account?.slice(0, 4)}...{walletState.account?.slice(-4)}
+                    </span>
+                    <span className="sm:hidden">
+                      {walletState.account?.slice(0, 2)}...{walletState.account?.slice(-2)}
                     </span>
                   </Badge>
-                  <Button variant="outline" size="sm" onClick={handleDisconnectWallet}>
-                    Disconnect
+                  <Button variant="outline" size="sm" onClick={handleDisconnectWallet} className="text-xs px-2 sm:px-3">
+                    <span className="hidden sm:inline">Disconnect</span>
+                    <span className="sm:hidden">×</span>
                   </Button>
                 </div>
               ) : (
                 <Button 
                   onClick={handleConnectWallet} 
                   disabled={walletState.isConnecting}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-2 sm:px-4"
                 >
                   {walletState.isConnecting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                   ) : (
-                    <Wallet className="w-4 h-4" />
+                    <Wallet className="w-3 h-3 sm:w-4 sm:h-4" />
                   )}
-                  <span>Connect Wallet</span>
+                  <span className="hidden sm:inline">Connect Wallet</span>
+                  <span className="sm:hidden">Connect</span>
                 </Button>
               )}
             </div>
@@ -188,7 +192,7 @@ export function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
         {error && (
           <Alert className="mb-6" variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -199,60 +203,60 @@ export function App() {
         {!walletState.isConnected ? (
           <div className="max-w-2xl mx-auto">
             <Card>
-              <CardHeader className="text-center">
+              <CardHeader className="text-center px-4 sm:px-6">
                 <div className="flex justify-center mb-4">
-                  <Bot className="w-16 h-16 text-primary" />
+                  <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-primary" />
                 </div>
-                <CardTitle className="text-3xl">Welcome to Agent Zule</CardTitle>
-                <CardDescription className="text-lg">
+                <CardTitle className="text-2xl sm:text-3xl">Welcome to Agent Zule</CardTitle>
+                <CardDescription className="text-base sm:text-lg">
                   AI-powered portfolio rebalancing and management platform
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
+              <CardContent className="space-y-6 px-4 sm:px-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-                      <Bot className="w-6 h-6 text-primary" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+                      <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold">AI-Powered</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-sm sm:text-base">AI-Powered</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Continuous portfolio optimization using advanced AI algorithms
                     </p>
                   </div>
                   <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center mx-auto">
-                      <Shield className="w-6 h-6 text-green-500" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/10 rounded-lg flex items-center justify-center mx-auto">
+                      <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" />
                     </div>
-                    <h3 className="font-semibold">Secure Delegations</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-sm sm:text-base">Secure Delegations</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Conditional permissions that adapt to market conditions
                     </p>
                   </div>
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mx-auto">
-                      <Activity className="w-6 h-6 text-blue-500" />
+                  <div className="text-center space-y-2 sm:col-span-2 lg:col-span-1">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mx-auto">
+                      <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
                     </div>
-                    <h3 className="font-semibold">Real-time Updates</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-sm sm:text-base">Real-time Updates</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Live portfolio monitoring and instant notifications
                     </p>
                   </div>
                 </div>
 
                 <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Connect your wallet to start optimizing your portfolio with AI
                   </p>
                   <Button 
                     size="lg" 
                     onClick={handleConnectWallet}
                     disabled={walletState.isConnecting}
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 w-full sm:w-auto"
                   >
                     {walletState.isConnecting ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                     ) : (
-                      <Wallet className="w-5 h-5" />
+                      <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
                     )}
                     <span>Connect Wallet</span>
                   </Button>
@@ -261,30 +265,30 @@ export function App() {
                 {/* System Status */}
                 {healthStatus && (
                   <div className="border-t pt-6">
-                    <h4 className="font-semibold mb-3 text-center">System Status</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <h4 className="font-semibold mb-3 text-center text-sm sm:text-base">System Status</h4>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                       <div className="text-center">
                         <div className={`flex items-center justify-center space-x-1 ${getHealthStatusColor(healthStatus.api)}`}>
                           {getHealthStatusIcon(healthStatus.api)}
-                          <span className="text-sm">Backend API</span>
+                          <span className="text-xs sm:text-sm">Backend API</span>
                         </div>
                       </div>
                       <div className="text-center">
                         <div className={`flex items-center justify-center space-x-1 ${getHealthStatusColor(healthStatus.websocket)}`}>
                           {getHealthStatusIcon(healthStatus.websocket)}
-                          <span className="text-sm">WebSocket</span>
+                          <span className="text-xs sm:text-sm">WebSocket</span>
                         </div>
                       </div>
                       <div className="text-center">
                         <div className={`flex items-center justify-center space-x-1 ${getHealthStatusColor(healthStatus.contracts)}`}>
                           {getHealthStatusIcon(healthStatus.contracts)}
-                          <span className="text-sm">Smart Contracts</span>
+                          <span className="text-xs sm:text-sm">Smart Contracts</span>
                         </div>
                       </div>
                       <div className="text-center">
                         <div className={`flex items-center justify-center space-x-1 ${getHealthStatusColor(healthStatus.wallet)}`}>
                           {getHealthStatusIcon(healthStatus.wallet)}
-                          <span className="text-sm">Wallet</span>
+                          <span className="text-xs sm:text-sm">Wallet</span>
                         </div>
                       </div>
                     </div>
@@ -299,12 +303,15 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-sm text-muted-foreground">
+      <footer className="border-t mt-8 sm:mt-16">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          <div className="text-center text-xs sm:text-sm text-muted-foreground">
             <p>Agent Zule - AI-Powered Portfolio Management Platform</p>
-            <p className="mt-2">
+            <p className="mt-2 hidden sm:block">
               Advanced portfolio optimization powered by AI and blockchain technology
+            </p>
+            <p className="mt-2 sm:hidden">
+              AI-powered portfolio optimization
             </p>
           </div>
         </div>

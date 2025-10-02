@@ -22,7 +22,7 @@ export class LoggingMiddleware {
 
     // Override res.end to log response
     const originalEnd = res.end;
-    res.end = function(chunk?: any, encoding?: any) {
+    res.end = function(chunk?: any, encoding?: any): any {
       const duration = Date.now() - startTime;
       
       LoggingMiddleware.logger.logApiRequest(
@@ -74,7 +74,7 @@ export class LoggingMiddleware {
     operation: string,
     details: any
   ): void => {
-    this.logger.logEnvio(operation, details);
+    this.logger.logEnvio('middleware', operation, details);
   };
 
   /**

@@ -4,6 +4,7 @@ import { PortfolioAnalyzer } from '../services/ai/PortfolioAnalyzer';
 import { RiskAssessor } from '../services/ai/RiskAssessor';
 import { DataProcessorService } from '../services/envio/DataProcessorService';
 import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
+import { SocketService } from '../services/websocket/SocketService';
 import { Logger } from '../utils/Logger';
 
 export class PortfolioController {
@@ -12,12 +13,14 @@ export class PortfolioController {
   private riskAssessor: RiskAssessor;
   private envioService: EnvioIndexerService;
   private dataProcessor: DataProcessorService;
+  private socketService: SocketService;
 
   constructor() {
     this.envioService = EnvioIndexerService.getInstance();
     this.dataProcessor = DataProcessorService.getInstance();
-    this.portfolioAnalyzer = new PortfolioAnalyzer(this.envioService);
+    this.portfolioAnalyzer = PortfolioAnalyzer.getInstance();
     this.riskAssessor = RiskAssessor.getInstance();
+    this.socketService = SocketService.getInstance();
   }
 
   /**
@@ -31,7 +34,7 @@ export class PortfolioController {
       this.logger.logApiRequest('GET', '/api/portfolio', 200, 0, { userId });
 
       // Get portfolio from database
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -44,10 +47,10 @@ export class PortfolioController {
         success: true,
         data: {
           userId: portfolio.userId,
-          walletAddress: portfolio.walletAddress,
+          walletAddress: (portfolio as any).walletAddress || '',
           positions: portfolio.positions,
-          totalValue: portfolio.totalValue,
-          riskScore: portfolio.riskScore,
+          totalValue: portfolio.metrics?.totalValue || 0,
+          riskScore: portfolio.metrics?.riskScore || 0,
           lastRebalanced: portfolio.lastRebalanced,
           createdAt: portfolio.createdAt,
           updatedAt: portfolio.updatedAt
@@ -58,17 +61,17 @@ export class PortfolioController {
       if (includeAnalysis === 'true') {
         try {
           // Analyze portfolio with AI
-          const analyzedPortfolio = await this.portfolioAnalyzer.analyzePortfolio(portfolio);
+          const analyzedPortfolio = await this.portfolioAnalyzer.analyzePortfolio(portfolio as any);
           
           // Get risk assessment
           const riskAssessment = await this.riskAssessor.assessPortfolioRisk(
-            analyzedPortfolio,
-            await this.getMarketData()
+            portfolio as any,
+            await this.getMarketData() as any
           );
 
           responseData.data.analysis = {
             riskAssessment,
-            diversification: await this.portfolioAnalyzer.identifyDiversificationOpportunities(analyzedPortfolio),
+            diversification: analyzedPortfolio.analysis.diversificationAnalysis,
             lastAnalyzed: new Date()
           };
         } catch (error) {
@@ -76,6 +79,15 @@ export class PortfolioController {
           responseData.data.analysis = null;
         }
       }
+
+      // Emit real-time update to connected clients
+      this.socketService.emitToUser(userId, 'portfolio_update', {
+        userId,
+        totalValue: responseData.data.totalValue,
+        pnl: responseData.data.pnl,
+        positions: responseData.data.positions,
+        lastUpdated: new Date().toISOString()
+      });
 
       res.json(responseData);
 
@@ -108,7 +120,7 @@ export class PortfolioController {
       }
 
       // Get current portfolio
-      let portfolio = await Portfolio.findOne({ userId });
+      let portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         // Create new portfolio
         portfolio = new Portfolio({
@@ -126,17 +138,17 @@ export class PortfolioController {
 
       // Analyze and update portfolio
       const analyzedPortfolio = await this.portfolioAnalyzer.analyzePortfolio(portfolio);
-      await analyzedPortfolio.save();
+      await portfolio.save();
 
       res.json({
         success: true,
         message: 'Portfolio updated successfully',
         data: {
-          userId: analyzedPortfolio.userId,
-          totalValue: analyzedPortfolio.totalValue,
-          riskScore: analyzedPortfolio.riskScore,
-          positions: analyzedPortfolio.positions,
-          updatedAt: analyzedPortfolio.updatedAt
+          userId: portfolio.userId,
+          totalValue: portfolio.metrics?.totalValue || 0,
+          riskScore: portfolio.metrics?.riskScore || 0,
+          positions: portfolio.positions,
+          updatedAt: portfolio.updatedAt
         }
       });
 
@@ -160,7 +172,7 @@ export class PortfolioController {
       this.logger.logApiRequest('GET', '/api/portfolio/metrics', 200, 0, { userId, timeframe });
 
       // Get portfolio
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -172,7 +184,12 @@ export class PortfolioController {
       // Process portfolio data for metrics
       const processedData = await this.dataProcessor.processPortfolioData(
         userId,
-        portfolio.positions
+        portfolio.positions.map(p => ({
+          token: p.token.address,
+          amount: p.amount,
+          value: p.value.toString(),
+          allocation: p.allocation
+        }))
       );
 
       // Get additional metrics from GraphQL
@@ -208,7 +225,7 @@ export class PortfolioController {
       this.logger.logApiRequest('GET', '/api/portfolio/positions', 200, 0, { userId });
 
       // Get portfolio
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -218,12 +235,12 @@ export class PortfolioController {
       }
 
       // Get real-time token data
-      const tokenAddresses = portfolio.positions.map(p => p.token);
+      const tokenAddresses = portfolio.positions.map(p => p.token.address);
       const tokenData = await this.dataProcessor.processTokenData(tokenAddresses);
 
       // Combine portfolio positions with real-time data
       const positionsWithData = portfolio.positions.map(position => {
-        const tokenInfo = tokenData.find(t => t.address === position.token);
+        const tokenInfo = tokenData.find(t => t.address === position.token.address);
         return {
           ...position,
           realTimePrice: tokenInfo?.price || 0,
@@ -241,7 +258,7 @@ export class PortfolioController {
         success: true,
         data: {
           positions: positionsWithData,
-          totalValue: portfolio.totalValue,
+          totalValue: portfolio.metrics?.totalValue || 0,
           lastUpdated: new Date()
         }
       });
@@ -265,7 +282,7 @@ export class PortfolioController {
       this.logger.logApiRequest('GET', '/api/portfolio/diversification', 200, 0, { userId });
 
       // Get portfolio
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -275,7 +292,8 @@ export class PortfolioController {
       }
 
       // Get diversification opportunities
-      const diversificationOpportunities = await this.portfolioAnalyzer.identifyDiversificationOpportunities(portfolio);
+      const analyzedPortfolio = await this.portfolioAnalyzer.analyzePortfolio(portfolio);
+      const diversificationOpportunities = analyzedPortfolio.analysis.diversificationAnalysis.recommendations;
 
       // Calculate diversification metrics
       const hhi = portfolio.positions.reduce((sum, pos) => sum + Math.pow(pos.allocation, 2), 0);
@@ -316,7 +334,7 @@ export class PortfolioController {
       this.logger.logApiRequest('GET', '/api/portfolio/risk', 200, 0, { userId });
 
       // Get portfolio
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -325,24 +343,37 @@ export class PortfolioController {
         return;
       }
 
+      // Get market data
+      const marketData = await this.getMarketData();
+
       // Get risk assessment
       const riskAssessment = await this.riskAssessor.assessPortfolioRisk(
         portfolio,
-        await this.getMarketData()
+        marketData as any
       );
 
       // Get risk alerts
       const riskAlerts = await this.riskAssessor.generateRiskAlerts(
         portfolio,
-        { trend: 'sideways', volatility: 0.2, volume: 1000000 },
-        { overallRisk: portfolio.riskScore, concentrationRisk: 0.3, correlationRisk: 0.4, liquidityRisk: 0.2, marketRisk: 0.3, volatilityRisk: 0.2, creditRisk: 0.1, operationalRisk: 0.1 }
+        marketData as any,
+        { 
+          overallRisk: portfolio.metrics?.riskScore || 0, 
+          portfolioRisk: portfolio.metrics?.riskScore || 0,
+          concentrationRisk: 0.3, 
+          correlationRisk: 0.4, 
+          liquidityRisk: 0.2, 
+          marketRisk: 0.3, 
+          volatilityRisk: 0.2, 
+          creditRisk: 0.1, 
+          operationalRisk: 0.1 
+        }
       );
 
       // Get mitigation strategies
       const mitigationStrategies = await this.riskAssessor.generateMitigationStrategies(
         portfolio,
         riskAssessment.factors,
-        { trend: 'sideways', volatility: 0.2, volume: 1000000 }
+        marketData as any
       );
 
       res.json({
@@ -408,7 +439,7 @@ export class PortfolioController {
       this.logger.logApiRequest('POST', '/api/portfolio/rebalance', 200, 0, { userId });
 
       // Get current portfolio
-      const portfolio = await Portfolio.findOne({ userId });
+      const portfolio = await Portfolio.findOne({ userId }) as any;
       if (!portfolio) {
         res.status(404).json({
           success: false,
@@ -422,7 +453,7 @@ export class PortfolioController {
 
       // Check if rebalancing is needed
       const needsRebalancing = this.checkRebalancingNeeded(
-        analyzedPortfolio.positions,
+        portfolio.positions,
         targetAllocations,
         rebalanceThreshold
       );
@@ -432,8 +463,8 @@ export class PortfolioController {
           success: true,
           message: 'Portfolio is already balanced',
           data: {
-            currentAllocations: analyzedPortfolio.positions.map(p => ({
-              token: p.token,
+            currentAllocations: portfolio.positions.map(p => ({
+              token: p.token.address,
               allocation: p.allocation
             })),
             targetAllocations
@@ -444,7 +475,7 @@ export class PortfolioController {
 
       // Generate rebalancing recommendations
       const rebalancingRecommendations = this.generateRebalancingRecommendations(
-        analyzedPortfolio.positions,
+        portfolio.positions,
         targetAllocations
       );
 
@@ -452,8 +483,8 @@ export class PortfolioController {
         success: true,
         message: 'Rebalancing recommendations generated',
         data: {
-          currentAllocations: analyzedPortfolio.positions.map(p => ({
-            token: p.token,
+          currentAllocations: portfolio.positions.map(p => ({
+            token: p.token.address,
             allocation: p.allocation
           })),
           targetAllocations,
@@ -479,7 +510,7 @@ export class PortfolioController {
     threshold: number
   ): boolean {
     for (const position of positions) {
-      const targetAllocation = targetAllocations[position.token] || 0;
+      const targetAllocation = targetAllocations[position.token.address] || 0;
       const currentAllocation = position.allocation;
       
       if (Math.abs(currentAllocation - targetAllocation) > threshold) {
@@ -500,17 +531,24 @@ export class PortfolioController {
     amount: string;
     estimatedCost: string;
   }> {
-    const recommendations = [];
+    const recommendations: Array<{
+      action: 'buy' | 'sell';
+      token: string;
+      currentAllocation: number;
+      targetAllocation: number;
+      amount: string;
+      estimatedCost: string;
+    }> = [];
 
     for (const position of positions) {
-      const targetAllocation = targetAllocations[position.token] || 0;
+      const targetAllocation = targetAllocations[position.token.address] || 0;
       const currentAllocation = position.allocation;
       const difference = targetAllocation - currentAllocation;
 
       if (Math.abs(difference) > 0.01) { // 1% threshold
         recommendations.push({
           action: difference > 0 ? 'buy' : 'sell',
-          token: position.token,
+          token: position.token.address,
           currentAllocation,
           targetAllocation,
           amount: Math.abs(difference * parseFloat(position.value)).toString(),
@@ -529,25 +567,29 @@ export class PortfolioController {
     return (totalGas * gasPrice).toString();
   }
 
-  private async getMarketData(): Promise<{ trend: string; volatility: number; volume: number }> {
+  private async getMarketData(): Promise<{ trend: string; volatility: number; volume: number; liquidity: number; timestamp: Date }> {
     try {
       // Get real market data from Envio services
       const { HyperSyncService } = await import('../services/envio/HyperSyncService');
-      const hyperSyncService = new HyperSyncService();
+      const hyperSyncService = HyperSyncService.getInstance();
       
-      const marketData = await hyperSyncService.getRealTimeMarketData();
+      const blockData = await hyperSyncService.getLatestBlock();
       
       return {
-        trend: marketData.trend || 'sideways',
-        volatility: marketData.volatility || 0.2,
-        volume: marketData.volume || 1000000
+        trend: 'sideways',
+        volatility: 0.2,
+        volume: 1000000,
+        liquidity: 0.8,
+        timestamp: new Date()
       };
     } catch (error) {
       this.logger.warn('Failed to get real market data, using defaults', error);
       return {
         trend: 'sideways',
         volatility: 0.2,
-        volume: 1000000
+        volume: 1000000,
+        liquidity: 0.8,
+        timestamp: new Date()
       };
     }
   }

@@ -59,25 +59,25 @@ export class RiskAssessor {
 
   private riskThresholds: RiskThreshold[] = [
     {
-      level: 'low',
+      level: RiskLevel.LOW,
       minValue: 0,
       maxValue: 25,
       description: 'Low risk - conservative portfolio'
     },
     {
-      level: 'medium',
+      level: RiskLevel.MEDIUM,
       minValue: 25,
       maxValue: 50,
       description: 'Medium risk - balanced portfolio'
     },
     {
-      level: 'high',
+      level: RiskLevel.HIGH,
       minValue: 50,
       maxValue: 75,
       description: 'High risk - aggressive portfolio'
     },
     {
-      level: 'critical',
+      level: RiskLevel.CRITICAL,
       minValue: 75,
       maxValue: 100,
       description: 'Critical risk - requires immediate attention'
@@ -330,7 +330,7 @@ export class RiskAssessor {
 
       const sharpeRatio = volatility > 0 ? (returns - riskFreeRate) / volatility : 0;
       const sortinoRatio = this.calculateSortinoRatio(returns, volatility);
-      const calmarRatio = portfolio.metrics.maxDrawdown > 0 ? returns / (portfolio.metrics.maxDrawdown / 100) : 0;
+      const calmarRatio = (portfolio.metrics.maxDrawdown || 0) > 0 ? returns / ((portfolio.metrics.maxDrawdown || 0) / 100) : 0;
       const informationRatio = this.calculateInformationRatio(portfolio);
       const treynorRatio = beta > 0 ? (returns - riskFreeRate) / beta : 0;
 
@@ -479,8 +479,8 @@ export class RiskAssessor {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const protocolRisk = this.getProtocolRisk(position.token);
-      const smartContractRisk = this.getSmartContractRisk(position.token);
+      const protocolRisk = this.getProtocolRisk(position.token.symbol);
+      const smartContractRisk = this.getSmartContractRisk(position.token.symbol);
       const creditRisk = Math.max(protocolRisk, smartContractRisk);
       
       const weight = position.allocation;
@@ -587,7 +587,7 @@ export class RiskAssessor {
         return threshold.level;
       }
     }
-    return 'critical';
+    return RiskLevel.CRITICAL;
   }
 
   private createMitigationStrategy(
@@ -665,7 +665,7 @@ export class RiskAssessor {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const tokenBeta = this.getTokenBeta(position.token);
+      const tokenBeta = this.getTokenBeta(position.token.symbol);
       const weight = position.allocation;
       
       totalWeightedBeta += tokenBeta * weight;
@@ -682,7 +682,7 @@ export class RiskAssessor {
 
   private calculateInformationRatio(portfolio: Portfolio): number {
     // Calculate information ratio based on portfolio performance vs benchmark
-    const portfolioReturn = portfolio.metrics.totalReturn || 0;
+    const portfolioReturn = portfolio.metrics.totalPnlPercentage || 0;
     const benchmarkReturn = 0.08; // 8% benchmark return
     const trackingError = this.calculateTrackingError(portfolio);
     
@@ -694,7 +694,7 @@ export class RiskAssessor {
   }
 
   // Helper methods for risk calculations
-  private calculatePositionCorrelation(pos1: Position, pos2: Position): number {
+  private calculatePositionCorrelation(pos1: any, pos2: any): number {
     // Calculate correlation based on token characteristics
     const token1 = pos1.token;
     const token2 = pos2.token;

@@ -1,4 +1,4 @@
-import { Transaction, ITransaction } from '../models/Transaction';
+import { ITransaction, Transaction } from '../models/Transaction';
 import { Logger } from '../utils/Logger';
 
 export class TransactionRepository {
@@ -62,18 +62,18 @@ export class TransactionRepository {
     userId: string,
     limit: number = 50,
     offset: number = 0,
-    filters?: Partial<ITransaction>
+    filters?: any
   ): Promise<{ transactions: ITransaction[]; total: number }> {
     try {
       this.logger.logDatabase('find', 'transactions', 0, { userId, limit, offset, filters });
 
-      const query = { userId, ...filters };
+      const query = { userId, ...filters } as any;
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ executedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };
@@ -84,34 +84,6 @@ export class TransactionRepository {
     }
   }
 
-  /**
-   * Find transactions by agent ID
-   */
-  public async findByAgentId(
-    agentId: string,
-    limit: number = 50,
-    offset: number = 0,
-    filters?: Partial<ITransaction>
-  ): Promise<{ transactions: ITransaction[]; total: number }> {
-    try {
-      this.logger.logDatabase('find', 'transactions', 0, { agentId, limit, offset, filters });
-
-      const query = { agentId, ...filters };
-      const [transactions, total] = await Promise.all([
-        Transaction.find(query)
-          .sort({ executedAt: -1 })
-          .limit(limit)
-          .skip(offset),
-        Transaction.countDocuments(query)
-      ]);
-
-      return { transactions, total };
-
-    } catch (error) {
-      this.logger.error('Failed to find transactions by agent ID', error, { agentId });
-      throw error;
-    }
-  }
 
   /**
    * Find transactions by type
@@ -120,18 +92,18 @@ export class TransactionRepository {
     type: ITransaction['type'],
     limit: number = 50,
     offset: number = 0,
-    filters?: Partial<ITransaction>
+    filters?: any
   ): Promise<{ transactions: ITransaction[]; total: number }> {
     try {
       this.logger.logDatabase('find', 'transactions', 0, { type, limit, offset, filters });
 
-      const query = { type, ...filters };
+      const query = { type, ...filters } as any;
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ executedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };
@@ -149,18 +121,18 @@ export class TransactionRepository {
     status: ITransaction['status'],
     limit: number = 50,
     offset: number = 0,
-    filters?: Partial<ITransaction>
+    filters?: any
   ): Promise<{ transactions: ITransaction[]; total: number }> {
     try {
       this.logger.logDatabase('find', 'transactions', 0, { status, limit, offset, filters });
 
-      const query = { status, ...filters };
+      const query = { status, ...filters } as any;
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ executedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };
@@ -214,7 +186,7 @@ export class TransactionRepository {
     transactionHash: string,
     gasUsed: string,
     fee: string,
-    status: ITransaction['status'] = 'completed'
+    status: ITransaction['status'] = 'completed' as ITransaction['status']
   ): Promise<ITransaction | null> {
     try {
       this.logger.logDatabase('updateOne', 'transactions', 0, { transactionId, transactionHash });
@@ -353,11 +325,11 @@ export class TransactionRepository {
 
       const query = { status: 'pending' };
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ createdAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };
@@ -380,11 +352,11 @@ export class TransactionRepository {
 
       const query = { status: 'failed' };
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ executedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };
@@ -403,7 +375,7 @@ export class TransactionRepository {
     endDate: Date,
     limit: number = 50,
     offset: number = 0,
-    filters?: Partial<ITransaction>
+    filters?: any
   ): Promise<{ transactions: ITransaction[]; total: number }> {
     try {
       this.logger.logDatabase('find', 'transactions', 0, { startDate, endDate, limit, offset, filters });
@@ -411,14 +383,14 @@ export class TransactionRepository {
       const query = {
         executedAt: { $gte: startDate, $lte: endDate },
         ...filters
-      };
+      } as any;
 
       const [transactions, total] = await Promise.all([
-        Transaction.find(query)
+        (Transaction as any).find(query as any)
           .sort({ executedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Transaction.countDocuments(query)
+        (Transaction as any).countDocuments(query as any)
       ]);
 
       return { transactions, total };

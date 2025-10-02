@@ -15,6 +15,7 @@ export interface DCAStrategy {
 }
 
 export interface DCAParameters {
+  type?: 'time_based' | 'price_based' | 'volatility_based' | 'hybrid';
   // Time-based parameters
   frequency?: 'hourly' | 'daily' | 'weekly' | 'monthly';
   intervals?: number; // Number of intervals to execute
@@ -380,7 +381,7 @@ export class DCAManager {
   }
 
   private generateDCAReasoning(position: Position, marketData: MarketCondition): string {
-    const reasons = [];
+    const reasons: string[] = [];
     
     if (marketData.trend === 'bearish') {
       reasons.push('Bear market provides good entry opportunities');
@@ -460,7 +461,7 @@ export class DCAManager {
   }
 
   private generateExecutionReason(strategy: DCAStrategy, marketData: MarketCondition): string {
-    const reasons = [];
+    const reasons: string[] = [];
     
     if (strategy.type === 'time_based') {
       reasons.push('Scheduled time-based execution');

@@ -1,4 +1,4 @@
-import { Portfolio, IPortfolio } from '../models/Portfolio';
+import { IPortfolio, Portfolio } from '../models/Portfolio';
 import { Logger } from '../utils/Logger';
 
 export class PortfolioRepository {
@@ -154,11 +154,11 @@ export class PortfolioRepository {
 
       const query = filters || {};
       const [portfolios, total] = await Promise.all([
-        Portfolio.find(query)
+        Portfolio.find(query as any)
           .sort({ updatedAt: -1 })
           .limit(limit)
           .skip(offset),
-        Portfolio.countDocuments(query)
+        Portfolio.countDocuments(query as any)
       ]);
 
       return { portfolios, total };
@@ -391,7 +391,12 @@ export class PortfolioRepository {
 
       // This would typically come from a separate performance tracking system
       // For now, return mock data
-      const history = [];
+      const history: Array<{
+        date: Date;
+        totalValue: number;
+        riskScore: number;
+        positions: number;
+      }> = [];
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 

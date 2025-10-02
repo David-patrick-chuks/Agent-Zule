@@ -38,11 +38,16 @@ export class Logger {
       winston.format.timestamp({
         format: 'HH:mm:ss'
       }),
-      winston.format.printf(({ timestamp, level, message, ...meta }) => {
+      winston.format.printf(({ timestamp, level, message, service, version, ...meta }) => {
         let logMessage = `${timestamp} [${level}]: ${message}`;
         
-        if (Object.keys(meta).length > 0) {
-          logMessage += ` ${JSON.stringify(meta, null, 2)}`;
+        // Only show meta if it has meaningful data (excluding service/version)
+        const cleanMeta = { ...meta };
+        delete cleanMeta.service;
+        delete cleanMeta.version;
+        
+        if (Object.keys(cleanMeta).length > 0) {
+          logMessage += ` ${JSON.stringify(cleanMeta, null, 2)}`;
         }
         
         return logMessage;
@@ -114,8 +119,16 @@ export class Logger {
     }
   }
 
-  public warn(message: string, meta?: any): void {
-    this.logger.warn(message, meta);
+  public warn(message: string, error?: Error | any, meta?: any): void {
+    if (error instanceof Error) {
+      this.logger.warn(message, {
+        error: error.message,
+        stack: error.stack,
+        ...meta
+      });
+    } else {
+      this.logger.warn(message, { error, ...meta });
+    }
   }
 
   public debug(message: string, meta?: any): void {
@@ -167,8 +180,9 @@ export class Logger {
     });
   }
 
-  public logEnvio(operation: string, details: any): void {
-    this.info(`Envio ${operation}`, {
+  public logEnvio(service: string, operation: string, details: any): void {
+    this.info(`Envio ${service} ${operation}`, {
+      service,
       operation,
       ...details
     });

@@ -1,25 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Portfolio, AIRecommendation, Permission, Web3State } from '@/lib/types';
+import { AIRecommendation, Permission, Portfolio, Web3State } from '@/lib/types';
 import { apiClient } from '@/services/api/apiClient';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Shield, 
-  Bot, 
-  Users, 
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Zap
+import {
+    Activity,
+    AlertTriangle,
+    Bot,
+    CheckCircle,
+    Clock,
+    DollarSign,
+    Shield,
+    TrendingDown,
+    TrendingUp,
+    Users,
+    Zap
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface DashboardProps {
   walletState: Web3State;
@@ -160,17 +160,17 @@ export function Dashboard({ walletState }: DashboardProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Portfolio Overview */}
       {portfolio && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Value</CardTitle>
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-2xl font-bold">
                 ${portfolio.totalValue.toLocaleString()}
               </div>
               <p className={`text-xs flex items-center ${
@@ -187,12 +187,12 @@ export function Dashboard({ walletState }: DashboardProps) {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Positions</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Active Positions</CardTitle>
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{portfolio.positions.length}</div>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-2xl font-bold">{portfolio.positions.length}</div>
               <p className="text-xs text-muted-foreground">
                 Diversified across tokens
               </p>
@@ -200,12 +200,12 @@ export function Dashboard({ walletState }: DashboardProps) {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Delegations</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Active Delegations</CardTitle>
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-2xl font-bold">
                 {permissions.filter(p => p.isGranted).length}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -215,12 +215,12 @@ export function Dashboard({ walletState }: DashboardProps) {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Recommendations</CardTitle>
-              <Bot className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Pending Recommendations</CardTitle>
+              <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-2xl font-bold">
                 {recommendations.filter(r => r.status === 'pending').length}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -232,12 +232,22 @@ export function Dashboard({ walletState }: DashboardProps) {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="recommendations" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="recommendations">AI Recommendations</TabsTrigger>
-          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+      <Tabs defaultValue="recommendations" className="space-y-3 sm:space-y-4">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto">
+          <TabsTrigger value="recommendations" className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+            <span className="hidden sm:inline">AI Recommendations</span>
+            <span className="sm:hidden">AI</span>
+          </TabsTrigger>
+          <TabsTrigger value="portfolio" className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+            Portfolio
+          </TabsTrigger>
+          <TabsTrigger value="permissions" className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+            <span className="hidden sm:inline">Permissions</span>
+            <span className="sm:hidden">Perms</span>
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="text-xs sm:text-sm py-2 px-2 sm:px-4">
+            Activity
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="recommendations" className="space-y-4">
@@ -255,45 +265,45 @@ export function Dashboard({ walletState }: DashboardProps) {
             ) : (
               recommendations.map((recommendation) => (
                 <Card key={recommendation.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+                  <CardHeader className="px-3 sm:px-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(recommendation.status)}
-                        <CardTitle className="text-lg">{recommendation.title}</CardTitle>
+                        <CardTitle className="text-base sm:text-lg">{recommendation.title}</CardTitle>
                       </div>
-                      <Badge variant={getImpactColor(recommendation.impact)}>
+                      <Badge variant={getImpactColor(recommendation.impact)} className="w-fit">
                         {recommendation.impact.toUpperCase()}
                       </Badge>
                     </div>
-                    <CardDescription>{recommendation.description}</CardDescription>
+                    <CardDescription className="text-sm">{recommendation.description}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
+                  <CardContent className="px-3 sm:px-6">
+                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
                       <div>
-                        <p className="text-sm font-medium">Confidence</p>
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-xs sm:text-sm font-medium">Confidence</p>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600">
                           {recommendation.confidence}%
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Estimated Return</p>
-                        <p className="text-2xl font-bold">
+                        <p className="text-xs sm:text-sm font-medium">Estimated Return</p>
+                        <p className="text-lg sm:text-2xl font-bold">
                           {recommendation.estimatedReturn > 0 ? '+' : ''}
                           {recommendation.estimatedReturn.toFixed(2)}%
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Risk Level</p>
-                        <Badge variant={getImpactColor(recommendation.riskLevel)}>
+                        <p className="text-xs sm:text-sm font-medium">Risk Level</p>
+                        <Badge variant={getImpactColor(recommendation.riskLevel)} className="w-fit">
                           {recommendation.riskLevel.toUpperCase()}
                         </Badge>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t space-y-2 sm:space-y-0">
                       <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
+                        <Users className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                        <span className="text-xs sm:text-sm text-muted-foreground">
                           {recommendation.communityVotes.length} community votes
                         </span>
                       </div>
@@ -303,8 +313,9 @@ export function Dashboard({ walletState }: DashboardProps) {
                             variant="outline"
                             size="sm"
                             onClick={() => handleExecuteRecommendation(recommendation.id)}
+                            className="w-full sm:w-auto text-xs sm:text-sm"
                           >
-                            <Zap className="w-4 h-4 mr-2" />
+                            <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                             Execute
                           </Button>
                         </div>
@@ -328,23 +339,24 @@ export function Dashboard({ walletState }: DashboardProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {portfolio.positions.map((position) => (
-                      <div key={position.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-bold">
+                      <div key={position.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg space-y-2 sm:space-y-0">
+                        <div className="flex items-center space-x-3 sm:space-x-4">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="text-xs sm:text-sm font-bold">
                               {position.token.symbol.charAt(0)}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium">{position.token.symbol}</p>
-                            <p className="text-sm text-muted-foreground">{position.token.name}</p>
+                            <p className="font-medium text-sm sm:text-base">{position.token.symbol}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{position.token.name}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium">${position.value.toLocaleString()}</p>
-                          <p className={`text-sm ${
+                        <div className="flex justify-between sm:block sm:text-right">
+                          <div className="text-left sm:text-right">
+                            <p className="font-medium text-sm sm:text-base">${position.value.toLocaleString()}</p>
+                            <p className={`text-xs sm:text-sm ${
                             position.valueChange >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {position.valueChange >= 0 ? '+' : ''}
@@ -352,8 +364,9 @@ export function Dashboard({ walletState }: DashboardProps) {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium">{position.allocation.toFixed(1)}%</p>
+                            <p className="text-xs sm:text-sm font-medium">{position.allocation.toFixed(1)}%</p>
                           <p className="text-xs text-muted-foreground">Allocation</p>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -389,26 +402,28 @@ export function Dashboard({ walletState }: DashboardProps) {
             ) : (
               permissions.map((permission) => (
                 <Card key={permission.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg capitalize">
+                  <CardHeader className="px-3 sm:px-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                      <CardTitle className="text-base sm:text-lg capitalize">
                         {permission.type.replace('_', ' ')}
                       </CardTitle>
-                      <Badge variant={permission.isGranted ? 'default' : 'secondary'}>
+                      <Badge variant={permission.isGranted ? 'default' : 'secondary'} className="w-fit">
                         {permission.isGranted ? 'Active' : 'Inactive'}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 sm:px-6">
                     <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         Conditions: {permission.conditions.length}
                       </p>
+                      <div className="space-y-1">
                       {permission.conditions.map((condition) => (
-                        <div key={condition.id} className="text-xs bg-muted p-2 rounded">
+                          <div key={condition.id} className="text-xs bg-muted p-2 rounded break-words">
                           {condition.type}: {condition.value} ({condition.operator})
                         </div>
                       ))}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

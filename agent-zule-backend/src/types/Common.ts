@@ -71,6 +71,7 @@ export interface MarketCondition {
   trend: 'bullish' | 'bearish' | 'sideways';
   volume: number;
   liquidity: number;
+  sentiment?: number;
   timestamp: Date;
 }
 

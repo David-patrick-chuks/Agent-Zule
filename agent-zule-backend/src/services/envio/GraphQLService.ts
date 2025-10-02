@@ -85,7 +85,10 @@ export class GraphQLService {
       const response = await this.graphqlClient.request<T>(
         query.query,
         query.variables,
-        query.operationName
+        {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.envio.apiKey}`
+        }
       );
 
       return { data: response };

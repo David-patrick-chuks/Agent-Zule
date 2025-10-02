@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { RecommendationType, RiskLevel, RecommendationStatus } from '../types/Recommendation';
+import { RecommendationType, RiskLevel } from '../types/Common';
+import { RecommendationStatus } from '../types/Recommendation';
 
 export interface IRecommendation extends Document {
   userId: string;
@@ -243,8 +244,8 @@ const RecommendationSchema = new Schema<IRecommendation>({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'expired', 'executed', 'cancelled'],
-    default: 'pending'
+    enum: Object.values(RecommendationStatus),
+    default: RecommendationStatus.PENDING
   },
   communityVotes: [CommunityVoteSchema],
   aiReasoning: {
@@ -292,16 +293,18 @@ RecommendationSchema.index({ status: 1, priority: 1 });
 
 // Virtual for approval rate
 RecommendationSchema.virtual('approvalRate').get(function() {
-  if (this.communityVotes && this.communityVotes.length > 0) {
-    const approvals = this.communityVotes.filter(vote => vote.vote === 'approve').length;
-    return approvals / this.communityVotes.length;
+  const doc = this as any;
+  if (doc.communityVotes && doc.communityVotes.length > 0) {
+    const approvals = doc.communityVotes.filter((vote: any) => vote.vote === 'approve').length;
+    return approvals / doc.communityVotes.length;
   }
   return 0;
 });
 
 // Virtual for total votes
 RecommendationSchema.virtual('totalVotes').get(function() {
-  return this.communityVotes ? this.communityVotes.length : 0;
+  const doc = this as any;
+  return doc.communityVotes ? doc.communityVotes.length : 0;
 });
 
 // Methods
@@ -361,13 +364,14 @@ RecommendationSchema.statics.findExpiredRecommendations = function() {
 
 // Pre-save middleware
 RecommendationSchema.pre('save', function(next) {
+  const doc = this as any;
   // Auto-expire recommendations if expiresAt is set and passed
-  if (this.expiresAt && this.expiresAt <= new Date() && this.status === RecommendationStatus.PENDING) {
-    this.status = RecommendationStatus.EXPIRED;
+  if (doc.expiresAt && doc.expiresAt <= new Date() && doc.status === RecommendationStatus.PENDING) {
+    doc.status = RecommendationStatus.EXPIRED;
   }
   
   // Update updatedAt timestamp
-  this.updatedAt = new Date();
+  doc.updatedAt = new Date();
   
   next();
 });

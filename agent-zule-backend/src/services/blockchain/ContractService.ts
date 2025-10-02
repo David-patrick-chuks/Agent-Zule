@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
+import { Config } from '../../config/AppConfig';
 import { Logger } from '../../utils/Logger';
 import { MonadClient } from './MonadClient';
-import { Config } from '../../config/AppConfig';
 
 export interface ContractABI {
   name: string;
@@ -284,7 +284,7 @@ export class ContractService {
     abi: ContractABI[],
     eventName: string,
     fromBlock: number = 0,
-    toBlock: number = 'latest'
+    toBlock: number | 'latest' = 'latest'
   ): Promise<ContractEvent[]> {
     try {
       this.logger.logEnvio('ContractService', 'get_events', { address, eventName, fromBlock, toBlock });
@@ -297,12 +297,12 @@ export class ContractService {
       return events.map(event => ({
         name: eventName,
         address: event.address,
-        topics: event.topics,
+        topics: [...event.topics], // Convert readonly array to mutable
         data: event.data,
         blockNumber: event.blockNumber,
         transactionHash: event.transactionHash,
         logIndex: event.index,
-        args: event.args
+        args: (event as any).args || {} // Handle cases where args might not exist
       }));
 
     } catch (error) {

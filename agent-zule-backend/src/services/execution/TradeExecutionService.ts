@@ -1,9 +1,11 @@
 import { ethers } from 'ethers';
-import { Logger } from '../../utils/Logger';
-import { MonadClient } from '../blockchain/MonadClient';
-import { ContractService } from '../blockchain/ContractService';
-import { TransactionRepository } from '../../repositories/TransactionRepository';
+import { TransactionType } from '../../models/Transaction';
 import { PermissionRepository } from '../../repositories/PermissionRepository';
+import { TransactionRepository } from '../../repositories/TransactionRepository';
+import { TransactionStatus } from '../../types/Common';
+import { Logger } from '../../utils/Logger';
+import { ContractService } from '../blockchain/ContractService';
+import { MonadClient } from '../blockchain/MonadClient';
 
 export interface TradeOrder {
   id: string;
@@ -532,6 +534,7 @@ export class TradeExecutionService {
 
       return permission;
 
+      
     } catch (error) {
       this.logger.error('Failed to check trade permission', error, { userId });
       return {
@@ -549,26 +552,22 @@ export class TradeExecutionService {
       if (result.transactionHash) {
         await this.transactionRepository.create({
           userId: order.userId,
-          agentId: 'agent-zule',
-          type: 'swap',
-          status: result.success ? 'completed' : 'failed',
-          blockchain: 'monad',
+          type: TransactionType.SWAP,
+          status: result.success ? TransactionStatus.COMPLETED : TransactionStatus.FAILED,
           transactionHash: result.transactionHash,
-          fromAddress: '', // Would get from wallet
-          toAddress: '', // Would get from DEX contract
           amount: order.amountIn,
           tokenAddress: order.tokenIn,
-          tokenSymbol: this.getTokenSymbol(order.tokenIn),
           gasUsed: result.gasUsed,
           fee: result.fee,
-          error: result.error,
           metadata: {
+            priority: 'medium',
+            tags: ['trade', 'execution'],
+            description: `Execute ${order.type} order for ${order.tokenIn}/${order.tokenOut}`,
+            source: 'ai_recommendation',
+            relatedTransactions: [],
             orderId: order.id,
-            orderType: order.type,
-            side: order.side,
             tokenIn: order.tokenIn,
-            tokenOut: order.tokenOut,
-            slippage: order.slippage
+            tokenOut: order.tokenOut
           }
         });
       }

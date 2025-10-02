@@ -56,6 +56,13 @@ export class UserRepository {
   }
 
   /**
+   * Find user by ID (alias for findById)
+   */
+  public async findByUserId(userId: string): Promise<IUser | null> {
+    return this.findById(userId);
+  }
+
+  /**
    * Update user preferences
    */
   public async updatePreferences(
@@ -126,11 +133,11 @@ export class UserRepository {
 
       const query = filters || {};
       const [users, total] = await Promise.all([
-        User.find(query)
+        User.find(query as any)
           .sort({ createdAt: -1 })
           .limit(limit)
           .skip(offset),
-        User.countDocuments(query)
+        User.countDocuments(query as any)
       ]);
 
       return { users, total };

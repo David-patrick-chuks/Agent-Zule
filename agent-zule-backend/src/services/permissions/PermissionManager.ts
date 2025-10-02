@@ -1,12 +1,11 @@
-import { Logger } from '../../utils/Logger';
-import { Permission, IPermission, PermissionCondition, PermissionAuditEntry } from '../../models/Permission';
-import { User } from '../../models/User';
-import { PermissionType, PermissionStatus, ConditionType } from '../../types/Permission';
+import { IPermission, Permission, PermissionCondition } from '../../models/Permission';
 import { MarketCondition } from '../../types/Common';
+import { PermissionStatus, PermissionType } from '../../types/Permission';
+import { Logger } from '../../utils/Logger';
 
 export interface PermissionEvaluationResult {
   isAllowed: boolean;
-  reason?: string;
+  reason?: string | null;
   triggeredConditions: string[];
   requiresCommunityVote: boolean;
   riskLevel: 'low' | 'medium' | 'high';
@@ -57,9 +56,10 @@ export class PermissionManager {
       });
 
       // Get user's active permissions for this type
-      const permissions = await Permission.findActivePermissions(request.userId, request.permissionType);
+      const permissions = await Permission.findActivePermissions(request.userId);
+      const filteredPermissions = permissions.filter(p => p.type === request.permissionType);
       
-      if (permissions.length === 0) {
+      if (filteredPermissions.length === 0) {
         return {
           isAllowed: false,
           reason: 'No active permissions found for this action',
@@ -71,7 +71,7 @@ export class PermissionManager {
 
       // Evaluate each permission
       const results = await Promise.all(
-        permissions.map(permission => this.evaluatePermissionConditions(permission, request, marketData))
+        filteredPermissions.map(permission => this.evaluatePermissionConditions(permission, request, marketData))
       );
 
       // Find the best matching permission
@@ -320,7 +320,7 @@ export class PermissionManager {
         
         if (shouldRevoke.should) {
           await permission.revoke(shouldRevoke.reason, 'system');
-          revokedPermissions.push(permission._id.toString());
+          revokedPermissions.push((permission._id as any).toString());
           revokedCount++;
         }
       }
@@ -613,7 +613,7 @@ export class PermissionManager {
 
   private parseTime(timeString: string): number {
     const [hours, minutes] = timeString.split(':').map(Number);
-    return hours * 60 + minutes;
+    return (hours || 0) * 60 + (minutes || 0);
   }
 
   private async checkFrequencyLimits(

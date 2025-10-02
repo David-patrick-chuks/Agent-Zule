@@ -1,5 +1,7 @@
 import { Position, PortfolioMetrics, TokenInfo } from './Common';
 
+export { Position, PortfolioMetrics, TokenInfo };
+
 export interface Portfolio {
   id: string;
   userId: string;

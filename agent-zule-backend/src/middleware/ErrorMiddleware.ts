@@ -62,7 +62,7 @@ export class ErrorMiddleware {
     };
 
     // Include error details in development
-    if (this.config.isDevelopment()) {
+    if (Config.isDevelopment()) {
       errorResponse.details = {
         name: error.name,
         message: error.message,

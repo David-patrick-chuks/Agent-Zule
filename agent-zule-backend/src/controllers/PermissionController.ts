@@ -99,7 +99,7 @@ export class PermissionController {
         reason: 'Permission created by user'
       });
 
-      this.logger.logPermission(permission._id.toString(), 'created', {
+      this.logger.logPermission((permission._id as any).toString(), 'created', {
         userId,
         type,
         agentId

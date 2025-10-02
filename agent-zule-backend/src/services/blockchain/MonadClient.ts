@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { Logger } from '../../utils/Logger';
 import { Config } from '../../config/AppConfig';
+import { Logger } from '../../utils/Logger';
 
 export interface MonadNetworkConfig {
   rpcUrl: string;
@@ -57,7 +57,7 @@ export class MonadClient {
   private config = Config.getConfig();
 
   private constructor() {
-    this.provider = new ethers.JsonRpcProvider(this.config.monad.rpcUrl);
+    this.provider = new ethers.JsonRpcProvider(this.config.blockchain.monad.rpcUrl);
   }
 
   public static getInstance(): MonadClient {
@@ -72,8 +72,8 @@ export class MonadClient {
    */
   public getNetworkConfig(): MonadNetworkConfig {
     return {
-      rpcUrl: this.config.monad.rpcUrl,
-      chainId: this.config.monad.chainId,
+      rpcUrl: this.config.blockchain.monad.rpcUrl,
+      chainId: this.config.blockchain.monad.chainId,
       name: 'Monad Testnet',
       nativeCurrency: {
         name: 'Monad',
@@ -118,7 +118,7 @@ export class MonadClient {
         gasLimit: block.gasLimit.toString(),
         gasUsed: block.gasUsed.toString(),
         baseFeePerGas: block.baseFeePerGas?.toString(),
-        transactions: block.transactions,
+        transactions: [...block.transactions],
         size: 0 // Block size not available in ethers.js
       };
 
@@ -333,7 +333,7 @@ export class MonadClient {
       const logs = await this.provider.getLogs(filter);
       return logs.map(log => ({
         address: log.address,
-        topics: log.topics,
+        topics: [...log.topics],
         data: log.data,
         blockNumber: log.blockNumber,
         transactionHash: log.transactionHash,
@@ -457,7 +457,7 @@ export class MonadClient {
   /**
    * Create wallet from mnemonic
    */
-  public createWalletFromMnemonic(mnemonic: string, path?: string): ethers.Wallet {
-    return ethers.Wallet.fromPhrase(mnemonic, this.provider, path);
+  public createWalletFromMnemonic(mnemonic: string, path?: string): ethers.HDNodeWallet {
+    return ethers.Wallet.fromPhrase(mnemonic, this.provider);
   }
 }

@@ -348,7 +348,7 @@ export class AuthMiddleware {
 
     return jwt.sign(payload, this.config.jwt.secret, {
       expiresIn: this.config.jwt.expiresIn
-    });
+    } as jwt.SignOptions);
   }
 
   /**

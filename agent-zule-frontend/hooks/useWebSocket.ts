@@ -1,48 +1,51 @@
 'use client';
 
-import { ENVIO_CONFIG } from '@/lib/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 
-interface WebSocketMessage {
+interface SocketMessage {
   type: string;
   data: any;
   timestamp: string;
 }
 
-interface WebSocketState {
+interface SocketState {
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
-  lastMessage: WebSocketMessage | null;
+  lastMessage: SocketMessage | null;
 }
 
-export function useWebSocket(url?: string) {
-  const [state, setState] = useState<WebSocketState>({
+export function useWebSocket(userId?: string) {
+  const [state, setState] = useState<SocketState>({
     isConnected: false,
     isConnecting: false,
     error: null,
     lastMessage: null,
   });
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const reconnectDelay = 3000;
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (socketRef.current?.connected) {
       return;
     }
 
     setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
     try {
-      const wsUrl = url || ENVIO_CONFIG.subscriptionEndpoint;
-      const ws = new WebSocket(wsUrl);
+      const socketUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const socket = io(socketUrl, {
+        transports: ['websocket', 'polling'],
+        autoConnect: true,
+      });
       
-      ws.onopen = () => {
-        console.log('WebSocket connected');
+      socket.on('connect', () => {
+        console.log('Socket.io connected');
         setState(prev => ({
           ...prev,
           isConnected: true,
@@ -50,30 +53,27 @@ export function useWebSocket(url?: string) {
           error: null,
         }));
         reconnectAttempts.current = 0;
-      };
 
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          setState(prev => ({
-            ...prev,
-            lastMessage: message,
-          }));
-        } catch (error) {
-          console.error('WebSocket message parsing error:', error);
+        // Authenticate if userId is provided
+        if (userId) {
+          socket.emit('authenticate', { userId });
         }
-      };
+      });
 
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+      socket.on('authenticated', (data) => {
+        console.log('Socket.io authenticated:', data);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('Socket.io disconnected:', reason);
         setState(prev => ({
           ...prev,
           isConnected: false,
           isConnecting: false,
         }));
 
-        // Attempt to reconnect if not a manual close
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+        // Attempt to reconnect if not a manual disconnect
+        if (reason !== 'io client disconnect' && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current++;
           console.log(`Attempting to reconnect (${reconnectAttempts.current}/${maxReconnectAttempts})...`);
           
@@ -81,27 +81,63 @@ export function useWebSocket(url?: string) {
             connect();
           }, reconnectDelay * reconnectAttempts.current);
         }
-      };
+      });
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      socket.on('connect_error', (error) => {
+        console.error('Socket.io connection error:', error);
         setState(prev => ({
           ...prev,
           isConnecting: false,
-          error: 'WebSocket connection error',
+          error: 'Socket.io connection error',
         }));
-      };
+      });
 
-      wsRef.current = ws;
+      // Listen for real-time events
+      socket.on('portfolio_update', (data) => {
+        setState(prev => ({
+          ...prev,
+          lastMessage: { type: 'portfolio_update', data, timestamp: new Date().toISOString() },
+        }));
+      });
+
+      socket.on('recommendations_update', (data) => {
+        setState(prev => ({
+          ...prev,
+          lastMessage: { type: 'recommendations_update', data, timestamp: new Date().toISOString() },
+        }));
+      });
+
+      socket.on('permission_update', (data) => {
+        setState(prev => ({
+          ...prev,
+          lastMessage: { type: 'permission_update', data, timestamp: new Date().toISOString() },
+        }));
+      });
+
+      socket.on('market_update', (data) => {
+        setState(prev => ({
+          ...prev,
+          lastMessage: { type: 'market_update', data, timestamp: new Date().toISOString() },
+        }));
+      });
+
+      socket.on('opportunities_update', (data) => {
+        setState(prev => ({
+          ...prev,
+          lastMessage: { type: 'opportunities_update', data, timestamp: new Date().toISOString() },
+        }));
+      });
+
+      socketRef.current = socket;
     } catch (error) {
-      console.error('WebSocket connection error:', error);
+      console.error('Socket.io connection error:', error);
       setState(prev => ({
         ...prev,
         isConnecting: false,
-        error: 'Failed to create WebSocket connection',
+        error: 'Failed to create Socket.io connection',
       }));
     }
-  }, [url]);
+  }, [userId]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -109,9 +145,9 @@ export function useWebSocket(url?: string) {
       reconnectTimeoutRef.current = null;
     }
 
-    if (wsRef.current) {
-      wsRef.current.close(1000, 'Manual disconnect');
-      wsRef.current = null;
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
 
     setState(prev => ({
@@ -121,34 +157,21 @@ export function useWebSocket(url?: string) {
     }));
   }, []);
 
-  const sendMessage = useCallback((message: any) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+  const emit = useCallback((event: string, data: any) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(event, data);
       return true;
     }
     return false;
   }, []);
 
-  const subscribe = useCallback((subscription: string, variables?: any) => {
-    const message = {
-      type: 'start',
-      payload: {
-        query: subscription,
-        variables,
-      },
-    };
-    return sendMessage(message);
-  }, [sendMessage]);
+  const subscribe = useCallback((channel: string, filters?: any) => {
+    return emit('subscribe', { channel, filters });
+  }, [emit]);
 
-  const unsubscribe = useCallback((subscriptionId: string) => {
-    const message = {
-      type: 'stop',
-      payload: {
-        id: subscriptionId,
-      },
-    };
-    return sendMessage(message);
-  }, [sendMessage]);
+  const unsubscribe = useCallback((channel: string) => {
+    return emit('unsubscribe', { channel });
+  }, [emit]);
 
   // Auto-connect on mount
   useEffect(() => {
@@ -172,7 +195,7 @@ export function useWebSocket(url?: string) {
     ...state,
     connect,
     disconnect,
-    sendMessage,
+    emit,
     subscribe,
     unsubscribe,
   };

@@ -1,13 +1,13 @@
-import { Logger } from '../../utils/Logger';
-import { PermissionManager } from './PermissionManager';
+import * as cron from 'node-cron';
 import { Permission } from '../../models/Permission';
 import { MarketCondition } from '../../types/Common';
 import { PermissionStatus } from '../../types/Permission';
-import * as cron from 'node-cron';
+import { Logger } from '../../utils/Logger';
+import { PermissionManager } from './PermissionManager';
 
 export interface AutoRevokeRule {
   id: string;
-  name: string;
+  name?: string;
   condition: string;
   threshold: number;
   action: 'revoke' | 'restrict' | 'escalate';
@@ -33,7 +33,7 @@ export class AutoRevokeService {
   private logger = Logger.getInstance();
   private permissionManager = PermissionManager.getInstance();
   private isRunning = false;
-  private cronJob?: cron.ScheduledTask;
+  private cronJob?: cron.ScheduledTask | null;
 
   // Auto-revoke rules
   private rules: AutoRevokeRule[] = [
@@ -318,6 +318,7 @@ export class AutoRevokeService {
         trend: 'sideways',
         volatility: 0.25,
         liquidity: 0.8,
+        volume: 1000000,
         sentiment: 0.5,
         timestamp: new Date()
       };
@@ -333,7 +334,7 @@ export class AutoRevokeService {
     permission: any,
     marketData: MarketCondition
   ): Promise<Array<{ rule: AutoRevokeRule; shouldTrigger: boolean; value: number }>> {
-    const results = [];
+    const results: Array<{ rule: AutoRevokeRule; shouldTrigger: boolean; value: number }> = [];
 
     for (const rule of this.rules) {
       if (!rule.isActive) continue;

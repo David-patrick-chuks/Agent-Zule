@@ -180,9 +180,7 @@ const UserSchema = new Schema<IUser>({
 });
 
 // Indexes for better query performance
-UserSchema.index({ walletAddress: 1 });
-UserSchema.index({ 'metadata.farcasterFid': 1 });
-UserSchema.index({ 'metadata.farcasterUsername': 1 });
+// Note: walletAddress already has unique index, farcasterFid and farcasterUsername already have sparse indexes
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ 'metadata.lastActive': -1 });
 
@@ -205,6 +203,10 @@ UserSchema.methods.incrementStatistic = function(stat: string, value: number = 1
 // Static methods
 UserSchema.statics.findByWalletAddress = function(walletAddress: string) {
   return this.findOne({ walletAddress: walletAddress.toLowerCase() });
+};
+
+UserSchema.statics.findByUserId = function(userId: string) {
+  return this.findById(userId);
 };
 
 UserSchema.statics.findByFarcasterFid = function(fid: string) {

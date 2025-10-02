@@ -14,19 +14,12 @@ async function startServer(): Promise<void> {
     await app.initialize();
 
     // Start server
-    const server = app.getApp().listen(config.server.port, config.server.host, () => {
+    const server = app.getServer().listen(config.server.port, config.server.host, () => {
       logger.info(`🚀 Agent Zule Backend Server running on ${config.server.host}:${config.server.port}`);
-      logger.info(`📊 Environment: ${config.isDevelopment() ? 'Development' : 'Production'}`);
+      logger.info(`📊 Environment: ${Config.isDevelopment() ? 'Development' : 'Production'}`);
       logger.info(`🔗 API Version: ${config.server.apiVersion}`);
       logger.info(`📝 Log Level: ${config.logging.level}`);
-      
-      // Log prize strategy alignment
-      logger.info('🏆 Prize Strategy Alignment:');
-      logger.info('  • Best AI Agent ($1,500) - AI Portfolio Analysis, Yield Optimization, DCA Strategies');
-      logger.info('  • Best Use of Envio ($2,000) - Custom Indexer, HyperSync APIs, GraphQL Queries');
-      logger.info('  • Envio Bonus ($1,000) - Real-time data drives all AI decisions');
-      logger.info('  • Most Innovative Use of Delegations ($500) - Conditional Permissions');
-      logger.info('  • Best Farcaster Mini App ($500) - Social Integration');
+      logger.info(`🔌 Socket.io enabled for real-time updates`);
     });
 
     // Graceful shutdown handling

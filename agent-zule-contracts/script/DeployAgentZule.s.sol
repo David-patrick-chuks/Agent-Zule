@@ -111,24 +111,23 @@ contract DeployAgentZule is Script {
         executionEngine.grantRole(keccak256("ADMIN_ROLE"), portfolioAgentAddress);
 
         // Set up initial permissions and configurations
-        // Note: setDefaultPermissions method doesn't exist, skipping
-        votingEngine.setVotingPeriod(86400); // 24 hours
-        executionEngine.setMaxSlippage(500); // 5%
+        // Note: Configuration methods may need to be added to contracts
+        console.log("Configuration methods not available in current contract versions");
 
         vm.stopBroadcast();
     }
 
     function _printDeploymentSummary() internal view {
-        console.log("\n" + "="*60);
+        console.log("\n============================================================");
         console.log("AGENT ZULE DEPLOYMENT SUMMARY");
-        console.log("="*60);
+        console.log("============================================================");
         console.log("PortfolioAgent:", portfolioAgentAddress);
         console.log("PermissionManager:", permissionManagerAddress);
         console.log("VotingEngine:", votingEngineAddress);
         console.log("ExecutionEngine:", executionEngineAddress);
         console.log("YieldOptimizer:", yieldOptimizerAddress);
         console.log("BridgeManager:", bridgeManagerAddress);
-        console.log("="*60);
+        console.log("============================================================");
     }
 
     function _saveDeploymentInfo() internal {

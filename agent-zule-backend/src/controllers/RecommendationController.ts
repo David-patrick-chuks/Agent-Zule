@@ -7,6 +7,7 @@ import { PortfolioAnalyzer } from '../services/ai/PortfolioAnalyzer';
 import { RiskAssessor } from '../services/ai/RiskAssessor';
 import { YieldOptimizer } from '../services/ai/YieldOptimizer';
 import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
+import { RecommendationStatus } from '../types/Recommendation';
 import { Logger } from '../utils/Logger';
 
 export class RecommendationController {
@@ -20,8 +21,8 @@ export class RecommendationController {
 
   constructor() {
     this.envioService = EnvioIndexerService.getInstance();
-    this.portfolioAnalyzer = new PortfolioAnalyzer(this.envioService);
-    this.yieldOptimizer = new YieldOptimizer(this.envioService);
+    this.portfolioAnalyzer = PortfolioAnalyzer.getInstance();
+    this.yieldOptimizer = YieldOptimizer.getInstance();
     this.dcaManager = DCAManager.getInstance();
     this.riskAssessor = RiskAssessor.getInstance();
     this.marketPredictor = MarketPredictor.getInstance();
@@ -195,8 +196,8 @@ export class RecommendationController {
       }
 
       // Update recommendation status
-      recommendation.status = 'approved';
-      recommendation.approvedAt = new Date();
+      recommendation.status = RecommendationStatus.APPROVED;
+      recommendation.executedAt = new Date();
       await recommendation.save();
 
       // Log the approval
@@ -212,7 +213,7 @@ export class RecommendationController {
         data: {
           recommendationId,
           status: recommendation.status,
-          approvedAt: recommendation.approvedAt
+          approvedAt: recommendation.executedAt
         }
       });
 
@@ -253,7 +254,7 @@ export class RecommendationController {
       }
 
       // Update recommendation status
-      recommendation.status = 'rejected';
+      recommendation.status = RecommendationStatus.REJECTED;
       await recommendation.save();
 
       // Log the rejection
@@ -310,7 +311,7 @@ export class RecommendationController {
       }
 
       // Check if user already voted
-      if (recommendation.communityVotes.voters.includes(voterAddress)) {
+      if (recommendation.communityVotes?.some(v => v.userId === voterAddress)) {
         res.status(400).json({
           success: false,
           message: 'User has already voted on this recommendation'
@@ -318,24 +319,31 @@ export class RecommendationController {
         return;
       }
 
-      // Update votes
-      if (vote === 'up') {
-        recommendation.communityVotes.upvotes += 1;
-      } else {
-        recommendation.communityVotes.downvotes += 1;
+      // Add new vote
+      if (!recommendation.communityVotes) {
+        recommendation.communityVotes = [];
       }
-      recommendation.communityVotes.voters.push(voterAddress);
+      
+      recommendation.communityVotes.push({
+        userId: voterAddress,
+        vote: vote === 'up' ? 'approve' : 'reject',
+        confidence: 1.0,
+        timestamp: new Date()
+      });
 
       await recommendation.save();
 
+      const upvotes = recommendation.communityVotes?.filter(v => v.vote === 'approve').length || 0;
+      const downvotes = recommendation.communityVotes?.filter(v => v.vote === 'reject').length || 0;
+      
       res.json({
         success: true,
         message: 'Vote recorded successfully',
         data: {
           recommendationId,
-          upvotes: recommendation.communityVotes.upvotes,
-          downvotes: recommendation.communityVotes.downvotes,
-          totalVotes: recommendation.communityVotes.upvotes + recommendation.communityVotes.downvotes
+          upvotes,
+          downvotes,
+          totalVotes: upvotes + downvotes
         }
       });
 
@@ -384,7 +392,7 @@ export class RecommendationController {
               $sum: { $cond: [{ $eq: ['$status', 'executed'] }, 1, 0] }
             },
             averageVotes: {
-              $avg: { $add: ['$communityVotes.upvotes', '$communityVotes.downvotes'] }
+              $avg: { $size: '$communityVotes' }
             },
             byType: {
               $push: {
@@ -444,7 +452,7 @@ export class RecommendationController {
       const topRecommendations = await Recommendation.find({
         status: { $in: ['approved', 'executed'] }
       })
-        .sort({ 'communityVotes.upvotes': -1, createdAt: -1 })
+        .sort({ createdAt: -1 })
         .limit(parseInt(limit as string));
 
       res.json({
@@ -469,17 +477,23 @@ export class RecommendationController {
     userId: string,
     portfolio: any
   ): Promise<any[]> {
-    const recommendations = [];
+    const recommendations: any[] = [];
 
     try {
       // Generate yield optimization recommendations
-      const yieldRecommendations = await this.yieldOptimizer.identifyYieldOpportunities(userId, portfolio);
-      recommendations.push(...yieldRecommendations);
+      const yieldResult = await this.yieldOptimizer.optimizeYield(portfolio);
+      recommendations.push(yieldResult);
 
       // Generate DCA recommendations
       const dcaRecommendations = await this.dcaManager.analyzeAndRecommend(
         portfolio,
-        { trend: 'sideways', volatility: 0.2, volume: 1000000 }
+        { 
+          trend: 'sideways', 
+          volatility: 0.2, 
+          volume: 1000000,
+          liquidity: 1000000,
+          timestamp: new Date()
+        }
       );
       
       // Convert DCA recommendations to standard format
@@ -500,7 +514,7 @@ export class RecommendationController {
       }
 
       // Generate market prediction recommendations
-      const tokenAddresses = portfolio.positions.map((p: any) => p.token);
+      const tokenAddresses = portfolio.positions.map((p: any) => p.token.address);
       const marketPredictions = await this.marketPredictor.predictPriceMovements(tokenAddresses);
       
       for (const prediction of marketPredictions) {

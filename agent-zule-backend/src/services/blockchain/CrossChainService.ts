@@ -395,9 +395,9 @@ export class CrossChainService {
         averageBlockTime: 12
       },
       {
-        chainId: this.config.monad.chainId,
+        chainId: this.config.blockchain.monad.chainId,
         name: 'Monad Testnet',
-        rpcUrl: this.config.monad.rpcUrl,
+        rpcUrl: this.config.blockchain.monad.rpcUrl,
         blockExplorer: 'https://testnet.monad.xyz',
         nativeCurrency: {
           name: 'Monad',

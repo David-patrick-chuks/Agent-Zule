@@ -1,4 +1,4 @@
-import { Recommendation, IRecommendation } from '../models/Recommendation';
+import { IRecommendation, Recommendation } from '../models/Recommendation';
 import { Logger } from '../utils/Logger';
 
 export class RecommendationRepository {
@@ -46,18 +46,18 @@ export class RecommendationRepository {
     userId: string,
     limit: number = 50,
     offset: number = 0,
-    filters?: Partial<IRecommendation>
+    filters?: any
   ): Promise<{ recommendations: IRecommendation[]; total: number }> {
     try {
       this.logger.logDatabase('find', 'recommendations', 0, { userId, limit, offset, filters });
 
-      const query = { userId, ...filters };
+      const query = { userId, ...filters } as any;
       const [recommendations, total] = await Promise.all([
-        Recommendation.find(query)
+        (Recommendation as any).find(query)
           .sort({ createdAt: -1 })
           .limit(limit)
           .skip(offset),
-        Recommendation.countDocuments(query)
+        (Recommendation as any).countDocuments(query)
       ]);
 
       return { recommendations, total };
@@ -177,23 +177,28 @@ export class RecommendationRepository {
     try {
       this.logger.logDatabase('updateOne', 'recommendations', 0, { recommendationId, voterAddress, vote });
 
-      const recommendation = await Recommendation.findById(recommendationId);
+      const recommendation = await Recommendation.findById(recommendationId) as any;
       if (!recommendation) {
         throw new Error('Recommendation not found');
       }
 
       // Check if user already voted
-      if (recommendation.communityVotes.voters.includes(voterAddress)) {
+      if (recommendation.communityVotes?.some((v: any) => v.userId === voterAddress)) {
         throw new Error('User has already voted on this recommendation');
       }
 
-      // Update votes
-      if (vote === 'up') {
-        recommendation.communityVotes.upvotes += 1;
-      } else {
-        recommendation.communityVotes.downvotes += 1;
+      // Add new vote
+      const newVote = {
+        userId: voterAddress,
+        vote: vote === 'up' ? 'approve' : 'reject',
+        confidence: 1.0,
+        timestamp: new Date()
+      };
+      
+      if (!recommendation.communityVotes) {
+        recommendation.communityVotes = [];
       }
-      recommendation.communityVotes.voters.push(voterAddress);
+      recommendation.communityVotes.push(newVote);
 
       await recommendation.save();
 
@@ -254,7 +259,7 @@ export class RecommendationRepository {
         Recommendation.countDocuments({ ...baseQuery, status: 'pending' }),
         Recommendation.aggregate([
           { $match: baseQuery },
-          { $group: { _id: null, avg: { $avg: { $add: ['$communityVotes.upvotes', '$communityVotes.downvotes'] } } } }
+          { $group: { _id: null, avg: { $avg: { $size: '$communityVotes' } } } }
         ]),
         Recommendation.aggregate([
           { $match: baseQuery },
@@ -313,7 +318,7 @@ export class RecommendationRepository {
       }
 
       const recommendations = await Recommendation.find(dateFilter)
-        .sort({ 'communityVotes.upvotes': -1, createdAt: -1 })
+        .sort({ 'communityVotes': -1, createdAt: -1 })
         .limit(limit);
 
       return recommendations;
@@ -338,12 +343,12 @@ export class RecommendationRepository {
         status: 'pending',
         $expr: {
           $gt: [
-            { $add: ['$communityVotes.upvotes', '$communityVotes.downvotes'] },
+            { $size: '$communityVotes' },
             5
           ]
         }
       })
-        .sort({ 'communityVotes.upvotes': -1, createdAt: -1 })
+        .sort({ 'communityVotes': -1, createdAt: -1 })
         .limit(limit);
 
       return recommendations;

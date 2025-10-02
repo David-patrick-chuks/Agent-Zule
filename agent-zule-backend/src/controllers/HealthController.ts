@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
-import { Logger } from '../utils/Logger';
-import { DatabaseConfig } from '../config/DatabaseConfig';
-import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
-import { HyperSyncService } from '../services/envio/HyperSyncService';
-import { GraphQLService } from '../services/envio/GraphQLService';
+import mongoose from 'mongoose';
 import { CrossChainMonitorService } from '../services/envio/CrossChainMonitorService';
 import { DataProcessorService } from '../services/envio/DataProcessorService';
-import mongoose from 'mongoose';
+import { EnvioIndexerService } from '../services/envio/EnvioIndexerService';
+import { GraphQLService } from '../services/envio/GraphQLService';
+import { HyperSyncService } from '../services/envio/HyperSyncService';
+import { Logger } from '../utils/Logger';
 
 export class HealthController {
   private logger = Logger.getInstance();
@@ -236,6 +235,9 @@ export class HealthController {
       }
 
       // Test database query
+      if (!mongoose.connection.db) {
+        throw new Error('Database connection not available');
+      }
       await mongoose.connection.db.admin().ping();
 
       const responseTime = Date.now() - startTime;
@@ -395,6 +397,9 @@ export class HealthController {
   private async getDatabaseMetrics(): Promise<any> {
     try {
       const db = mongoose.connection.db;
+      if (!db) {
+        throw new Error('Database connection not available');
+      }
       const stats = await db.stats();
 
       return {

@@ -1,9 +1,11 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRealTimePortfolio } from '@/hooks/useRealTimePortfolio';
+import { useWallet } from '@/hooks/useWallet';
+import { Activity, RefreshCw, TrendingDown, TrendingUp, Wifi, WifiOff } from 'lucide-react';
 
 // Mock data - in production this would come from API
 const portfolioData = {
@@ -46,7 +48,16 @@ const portfolioData = {
 };
 
 export function PortfolioOverview() {
-  const isPositive = portfolioData.totalValueChangePercent >= 0;
+  const { address } = useWallet();
+  const { 
+    isConnected, 
+    portfolioData: realTimeData, 
+    requestPortfolioUpdate 
+  } = useRealTimePortfolio(address);
+
+  // Use real-time data if available, otherwise fall back to mock data
+  const currentData = realTimeData || portfolioData;
+  const isPositive = currentData.totalValueChangePercent >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
   return (
@@ -61,10 +72,23 @@ export function PortfolioOverview() {
                 AI-managed portfolio performance and allocation
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <Badge variant="secondary" className="text-green-600">
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Live
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-gray-500">
+                  <WifiOff className="w-3 h-3 mr-1" />
+                  Offline
+                </Badge>
+              )}
+              <Button variant="outline" size="sm" onClick={requestPortfolioUpdate}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -72,15 +96,15 @@ export function PortfolioOverview() {
             {/* Total Value */}
             <div className="text-center">
               <div className="text-3xl font-bold mb-2">
-                ${portfolioData.totalValue.toLocaleString()}
+                ${currentData.totalValue?.toLocaleString() || '0'}
               </div>
               <div className="flex items-center justify-center gap-2">
                 <TrendIcon className={`w-4 h-4 ${isPositive ? 'text-green-500' : 'text-red-500'}`} />
                 <span className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}{portfolioData.totalValueChangePercent}%
+                  {isPositive ? '+' : ''}{currentData.totalValueChangePercent || 0}%
                 </span>
                 <span className="text-muted-foreground text-sm">
-                  (${portfolioData.totalValueChange.toFixed(2)})
+                  (${currentData.totalValueChange?.toFixed(2) || '0.00'})
                 </span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">24h Performance</p>

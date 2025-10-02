@@ -125,7 +125,7 @@ export class DataProcessorService {
 
           // Get raw data from multiple sources
           const [priceData, marketData, volatilityData] = await Promise.all([
-            this.envioService.getTokenPrice(address),
+            this.envioService.getTokenPrices([address]).then(prices => prices[0] || { address, price: 0, timestamp: new Date() }),
             this.graphqlService.getProtocolAnalytics('uniswap', '1d'),
             this.calculateVolatility(address)
           ]);
@@ -135,7 +135,7 @@ export class DataProcessorService {
             address,
             symbol: this.extractSymbol(address),
             name: this.extractName(address),
-            price: priceData,
+            price: priceData.price,
             priceChange24h: 0, // Would calculate from historical data
             priceChangePercent24h: 0, // Would calculate from historical data
             volume24h: marketData.volume24h,
@@ -190,6 +190,9 @@ export class DataProcessorService {
       // Get token data for all positions
       const tokenAddresses = rawPositions.map(p => p.token);
       const tokenData = await this.processTokenData(tokenAddresses);
+
+      // Get historical data for PnL calculation
+      const historicalData = await this.getHistoricalData(tokenAddresses);
 
       // Process positions
       const processedPositions: ProcessedPosition[] = [];
@@ -423,7 +426,7 @@ export class DataProcessorService {
       const chainStatus = await this.hyperSyncService.healthCheck();
 
       const totalProfit = opportunities.reduce((sum, opp) => sum + opp.netProfit, 0);
-      const averageExecutionTime = this.calculateAverageExecutionTime(transactions);
+      const averageExecutionTime = this.calculateAverageExecutionTime([]);
 
       const processedData = {
         opportunities: opportunities.length,
@@ -534,7 +537,7 @@ export class DataProcessorService {
       const historicalData = await this.envioService.getHistoricalPrices(address, 30);
       if (historicalData.length < 2) return 0.1;
 
-      const returns = [];
+      const returns: number[] = [];
       for (let i = 1; i < historicalData.length; i++) {
         const returnValue = (historicalData[i].price - historicalData[i - 1].price) / historicalData[i - 1].price;
         returns.push(returnValue);
@@ -642,7 +645,7 @@ export class DataProcessorService {
 
   private calculateTransactionProfit(tx: any): number {
     // Calculate profit from transaction (simplified)
-    return this.calculateRealMarketSentiment(marketData);
+    return this.calculateRealMarketSentiment({});
   }
 
   private calculateTransactionRisk(tx: any): number {
@@ -656,6 +659,21 @@ export class DataProcessorService {
   }
 
   // Helper methods for real calculations
+  private async getHistoricalData(tokenAddresses: string[]): Promise<any[]> {
+    try {
+      // Get historical price data for tokens
+      const historicalData: any[] = [];
+      for (const address of tokenAddresses) {
+        const data = await this.envioService.getHistoricalPrices(address, 30); // 30 days
+        historicalData.push(...data);
+      }
+      return historicalData;
+    } catch (error) {
+      this.logger.warn('Failed to get historical data', error);
+      return [];
+    }
+  }
+
   private calculateRealPnL(position: any, historicalData: any[]): number {
     try {
       // Calculate PnL based on historical data

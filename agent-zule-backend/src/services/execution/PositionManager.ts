@@ -1,17 +1,18 @@
 import { ethers } from 'ethers';
 import { PortfolioRepository } from '../../repositories/PortfolioRepository';
 import { TransactionRepository } from '../../repositories/TransactionRepository';
+import { Position } from '../../types/Common';
 import { Logger } from '../../utils/Logger';
 import { ContractService } from '../blockchain/ContractService';
 import { MonadClient } from '../blockchain/MonadClient';
 
-export interface Position {
+export interface PositionManagerPosition {
   id: string;
   userId: string;
   token: string;
   symbol: string;
   amount: string;
-  value: string;
+  value: number;
   allocation: number;
   entryPrice: number;
   currentPrice: number;
@@ -25,7 +26,7 @@ export interface Position {
 export interface PositionUpdate {
   token: string;
   amount: string;
-  value: string;
+  value: number;
   allocation: number;
   price: number;
   pnl: number;
@@ -83,7 +84,7 @@ export class PositionManager {
   /**
    * Get user positions
    */
-  public async getUserPositions(userId: string): Promise<Position[]> {
+  public async getUserPositions(userId: string): Promise<PositionManagerPosition[]> {
     try {
       this.logger.logEnvio('PositionManager', 'get_user_positions', { userId });
 
@@ -94,19 +95,19 @@ export class PositionManager {
       }
 
       // Convert portfolio positions to Position objects
-      const positions: Position[] = portfolio.positions.map(pos => ({
-        id: `pos_${userId}_${pos.token}`,
+      const positions: PositionManagerPosition[] = portfolio.positions.map((pos, index) => ({
+        id: `pos_${userId}_${pos.token.address}`,
         userId,
-        token: pos.token,
-        symbol: this.getTokenSymbol(pos.token),
+        token: pos.token.address,
+        symbol: pos.token.symbol,
         amount: pos.amount,
-        value: pos.value,
+        value: typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value,
         allocation: pos.allocation,
         entryPrice: 0, // Would calculate from historical data
-        currentPrice: parseFloat(pos.value) / parseFloat(pos.amount),
+        currentPrice: (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value) / parseFloat(pos.amount),
         pnl: 0, // Would calculate from entry price
         pnlPercentage: 0,
-        riskScore: 0, // Would calculate based on token volatility
+        riskScore: 0,
         createdAt: new Date(),
         updatedAt: new Date()
       }));
@@ -126,7 +127,7 @@ export class PositionManager {
     userId: string,
     token: string,
     update: PositionUpdate
-  ): Promise<Position | null> {
+  ): Promise<PositionManagerPosition | null> {
     try {
       this.logger.logEnvio('PositionManager', 'update_position', { userId, token });
 
@@ -137,7 +138,7 @@ export class PositionManager {
       }
 
       // Find and update position
-      const positionIndex = portfolio.positions.findIndex(p => p.token === token);
+      const positionIndex = portfolio.positions.findIndex(p => p.token.address === token);
       if (positionIndex === -1) {
         throw new Error('Position not found');
       }
@@ -151,22 +152,22 @@ export class PositionManager {
       };
 
       // Recalculate total value and allocations
-      const totalValue = portfolio.positions.reduce((sum, pos) => sum + parseFloat(pos.value), 0);
+      const totalValue = portfolio.positions.reduce((sum, pos) => sum + (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value), 0);
       
       // Update allocations to ensure they sum to 1
       portfolio.positions.forEach(pos => {
-        pos.allocation = parseFloat(pos.value) / totalValue;
+        pos.allocation = pos.value / totalValue;
       });
 
       // Update portfolio
       await this.portfolioRepository.updateMetrics(
         userId,
         totalValue.toString(),
-        portfolio.riskScore
+        0 // Default risk score as number
       );
 
       // Create updated position object
-      const position: Position = {
+      const position: PositionManagerPosition = {
         id: `pos_${userId}_${token}`,
         userId,
         token,
@@ -206,7 +207,7 @@ export class PositionManager {
     token: string,
     amount: string,
     value: string
-  ): Promise<Position> {
+  ): Promise<PositionManagerPosition> {
     try {
       this.logger.logEnvio('PositionManager', 'add_position', { userId, token, amount, value });
 
@@ -217,44 +218,54 @@ export class PositionManager {
       }
 
       // Check if position already exists
-      const existingPosition = portfolio.positions.find(p => p.token === token);
+      const existingPosition = portfolio.positions.find(p => p.token.address === token);
       if (existingPosition) {
         throw new Error('Position already exists');
       }
 
       // Add new position
       const newPosition = {
-        token,
+        token: { 
+          address: token, 
+          symbol: this.getTokenSymbol(token), 
+          name: this.getTokenSymbol(token),
+          decimals: 18,
+          price: parseFloat(value) / parseFloat(amount)
+        }, // Create TokenInfo object
         amount,
-        value,
-        allocation: 0 // Will be calculated after updating total value
+        value: parseFloat(value),
+        allocation: 0, // Will be calculated after updating total value
+        entryPrice: 0,
+        currentPrice: parseFloat(value) / parseFloat(amount),
+        pnl: 0,
+        pnlPercentage: 0
       };
 
       portfolio.positions.push(newPosition);
 
       // Recalculate total value and allocations
-      const totalValue = portfolio.positions.reduce((sum, pos) => sum + parseFloat(pos.value), 0);
+      const totalValue = portfolio.positions.reduce((sum, pos) => sum + (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value), 0);
       
       // Update allocations
       portfolio.positions.forEach(pos => {
-        pos.allocation = parseFloat(pos.value) / totalValue;
+        pos.allocation = (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value) / totalValue;
       });
 
       // Update portfolio
       await this.portfolioRepository.updateMetrics(
         userId,
         totalValue.toString(),
-        portfolio.riskScore
+        0 // Default risk score as number
       );
 
       // Create position object
-      const position: Position = {
+      const position: PositionManagerPosition = {
         id: `pos_${userId}_${token}`,
         userId,
         token,
         symbol: this.getTokenSymbol(token),
         amount,
-        value,
+        value: parseFloat(value),
         allocation: parseFloat(value) / totalValue,
         entryPrice: 0,
         currentPrice: parseFloat(value) / parseFloat(amount),
@@ -297,7 +308,7 @@ export class PositionManager {
       }
 
       // Find and remove position
-      const positionIndex = portfolio.positions.findIndex(p => p.token === token);
+      const positionIndex = portfolio.positions.findIndex(p => p.token.address === token);
       if (positionIndex === -1) {
         throw new Error('Position not found');
       }
@@ -305,18 +316,18 @@ export class PositionManager {
       portfolio.positions.splice(positionIndex, 1);
 
       // Recalculate total value and allocations
-      const totalValue = portfolio.positions.reduce((sum, pos) => sum + parseFloat(pos.value), 0);
+      const totalValue = portfolio.positions.reduce((sum, pos) => sum + (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value), 0);
       
       // Update allocations
       portfolio.positions.forEach(pos => {
-        pos.allocation = parseFloat(pos.value) / totalValue;
+        pos.allocation = (typeof pos.value === 'string' ? parseFloat(pos.value) : pos.value) / totalValue;
       });
 
       // Update portfolio
       await this.portfolioRepository.updateMetrics(
         userId,
         totalValue.toString(),
-        portfolio.riskScore
+        0 // Default risk score as number
       );
 
       this.logger.logEnvio('PositionManager', 'position_removed', { userId, token });
@@ -337,7 +348,7 @@ export class PositionManager {
 
       const positions = await this.getUserPositions(userId);
       
-      const totalValue = positions.reduce((sum, pos) => sum + parseFloat(pos.value), 0);
+      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0);
       const totalPnl = positions.reduce((sum, pos) => sum + pos.pnl, 0);
       const totalPnlPercentage = totalValue > 0 ? (totalPnl / totalValue) * 100 : 0;
       
@@ -403,7 +414,7 @@ export class PositionManager {
             action: difference > 0 ? 'buy' : 'sell',
             currentAllocation,
             targetAllocation,
-            amount: Math.abs(difference * parseFloat(position.value)).toString(),
+            amount: Math.abs(difference * position.value).toString(),
             priority: Math.abs(difference) > 0.1 ? 'high' : Math.abs(difference) > 0.05 ? 'medium' : 'low',
             reason: `Rebalance to ${(targetAllocation * 100).toFixed(1)}% target allocation`
           };
@@ -530,8 +541,8 @@ export class PositionManager {
       );
 
       const history = result.transactions.map(tx => ({
-        timestamp: tx.executedAt,
-        amount: tx.amount,
+        timestamp: tx.executedAt || new Date(),
+        amount: tx.amount || '0',
         value: tx.metadata?.value || '0',
         price: parseFloat(tx.metadata?.price || '0'),
         action: tx.type

@@ -24,7 +24,7 @@ export interface SocketMessage {
 export interface Subscription {
   userId: string;
   channel: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, any> | null;
   createdAt: Date;
 }
 
@@ -38,7 +38,7 @@ export class SocketService {
   private connectedUsers: Map<string, SocketUser> = new Map();
   private subscriptions: Map<string, Subscription[]> = new Map();
   private isMonitoring = false;
-  private monitoringInterval?: NodeJS.Timeout;
+  private monitoringInterval?: NodeJS.Timeout | null;
 
   private constructor(server: HTTPServer) {
     this.io = new SocketIOServer(server, {

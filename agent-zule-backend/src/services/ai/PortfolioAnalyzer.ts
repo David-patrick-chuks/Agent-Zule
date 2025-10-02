@@ -1,6 +1,6 @@
-import { Logger } from '../../utils/Logger';
-import { Portfolio, Position, PortfolioMetrics, PortfolioAnalysis, RiskAssessment, PerformanceMetrics, DiversificationAnalysis, RebalancingRecommendation } from '../../types/Portfolio';
 import { MarketCondition, RiskLevel } from '../../types/Common';
+import { DiversificationAnalysis, PerformanceMetrics, Portfolio, PortfolioAnalysis, Position, RebalancingRecommendation, RiskAssessment } from '../../types/Portfolio';
+import { Logger } from '../../utils/Logger';
 
 export interface AnalysisOptions {
   includeRiskAssessment?: boolean;
@@ -79,9 +79,35 @@ export class PortfolioAnalyzer {
 
       const analysis: PortfolioAnalysis['analysis'] = {
         overallScore,
-        riskAssessment,
-        performanceMetrics,
-        diversificationAnalysis,
+        riskAssessment: riskAssessment || {
+          score: 50,
+          level: 'medium',
+          factors: [],
+          recommendations: []
+        },
+        performanceMetrics: performanceMetrics || {
+          totalReturn: 0,
+          annualizedReturn: 0,
+          sharpeRatio: 0,
+          maxDrawdown: 0,
+          volatility: 0,
+          beta: 1,
+          alpha: 0
+        },
+        diversificationAnalysis: diversificationAnalysis || {
+          score: 0,
+          concentrationRisk: 1,
+          sectorDistribution: {},
+          tokenDistribution: {},
+          correlationMatrix: {},
+          recommendations: []
+        },
+        yieldAnalysis: {
+          currentYield: 0,
+          potentialYield: 0,
+          yieldSources: [],
+          optimizationOpportunities: []
+        },
         rebalancingRecommendations
       };
 
@@ -224,9 +250,9 @@ export class PortfolioAnalyzer {
       // Cap risk score at 100
       riskScore = Math.min(riskScore, 100);
 
-      const riskLevel: RiskLevel = riskScore > 75 ? 'critical' : 
-                                   riskScore > 50 ? 'high' : 
-                                   riskScore > 25 ? 'medium' : 'low';
+      const riskLevel: RiskLevel = riskScore > 75 ? RiskLevel.CRITICAL : 
+                                   riskScore > 50 ? RiskLevel.HIGH : 
+                                   riskScore > 25 ? RiskLevel.MEDIUM : RiskLevel.LOW;
 
       const recommendations = this.generateRiskRecommendations(riskFactors);
 
@@ -241,7 +267,7 @@ export class PortfolioAnalyzer {
       this.logger.error('Failed to assess risk', error);
       return {
         score: 50,
-        level: 'medium',
+        level: RiskLevel.MEDIUM,
         factors: [],
         recommendations: ['Unable to assess risk - please review manually']
       };
@@ -384,7 +410,7 @@ export class PortfolioAnalyzer {
             reason: `Rebalance to target allocation of ${(targetAllocation * 100).toFixed(1)}%`,
             priority: difference > 0.1 ? 'high' : difference > 0.07 ? 'medium' : 'low',
             expectedImpact: this.calculateExpectedImpact(position, targetAllocation, marketData),
-            riskLevel: this.calculateRecommendationRisk(position, action, marketData)
+            riskLevel: this.getRiskLevelString(position, action, marketData)
           });
         }
       }
@@ -495,7 +521,7 @@ export class PortfolioAnalyzer {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const liquidityRisk = this.getTokenLiquidityRisk(position.token);
+      const liquidityRisk = this.getTokenLiquidityRisk(position.token.symbol);
       const weight = position.allocation;
       
       totalWeightedRisk += liquidityRisk * weight;
@@ -525,7 +551,7 @@ export class PortfolioAnalyzer {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const tokenVolatility = this.getTokenVolatility(position.token);
+      const tokenVolatility = this.getTokenVolatility(position.token.symbol);
       const maxDrawdown = Math.min(tokenVolatility * 2, 0.5); // Cap at 50%
       const weight = position.allocation;
       
@@ -544,7 +570,7 @@ export class PortfolioAnalyzer {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const tokenVolatility = this.getTokenVolatility(position.token);
+      const tokenVolatility = this.getTokenVolatility(position.token.symbol);
       const weight = position.allocation;
       
       totalWeightedVolatility += tokenVolatility * weight;
@@ -567,7 +593,7 @@ export class PortfolioAnalyzer {
     let totalWeight = 0;
     
     portfolio.positions.forEach(position => {
-      const tokenBeta = this.getTokenBeta(position.token);
+      const tokenBeta = this.getTokenBeta(position.token.symbol);
       const weight = position.allocation;
       
       totalWeightedBeta += tokenBeta * weight;
@@ -592,12 +618,12 @@ export class PortfolioAnalyzer {
     if (token1 === token2) return 1;
     
     // Different token types have different correlations
-    const token1Type = this.getTokenType(token1);
-    const token2Type = this.getTokenType(token2);
+    const token1Type = this.getTokenType(token1.symbol);
+    const token2Type = this.getTokenType(token2.symbol);
     
     if (token1Type === token2Type) {
       return 0.7; // High correlation for same type
-    } else if (this.areTokensRelated(token1, token2)) {
+    } else if (this.areTokensRelated(token1.symbol, token2.symbol)) {
       return 0.5; // Medium correlation for related tokens
     } else {
       return 0.2; // Low correlation for unrelated tokens
@@ -728,7 +754,7 @@ export class PortfolioAnalyzer {
       // Adjust based on risk profile and market conditions
       let targetWeight = equalWeight;
       
-      if (portfolio.riskProfile.tolerance === 'conservative') {
+      if (portfolio.riskProfile.tolerance === 'low') {
         // Favor more stable assets
         if (pos.token.symbol === 'USDC' || pos.token.symbol === 'USDT') {
           targetWeight *= 1.5;
@@ -758,8 +784,24 @@ export class PortfolioAnalyzer {
     position: Position,
     action: 'buy' | 'sell',
     marketData?: MarketCondition
-  ): RiskLevel {
+  ): 'low' | 'medium' | 'high' {
     // Simplified risk calculation
+    if (marketData?.volatility && marketData.volatility > 0.4) {
+      return 'high';
+    }
+    
+    if (position.allocation > 0.2) {
+      return 'medium';
+    }
+
+    return 'low';
+  }
+
+  private getRiskLevelString(
+    position: Position,
+    action: 'buy' | 'sell',
+    marketData?: MarketCondition
+  ): 'low' | 'medium' | 'high' {
     if (marketData?.volatility && marketData.volatility > 0.4) {
       return 'high';
     }

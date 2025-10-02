@@ -1,7 +1,6 @@
-import { Logger } from '../../utils/Logger';
-import { MarketCondition, TokenInfo } from '../../types/Common';
-import { EnvioIndexerService } from '../envio/EnvioIndexerService';
 import * as tf from '@tensorflow/tfjs-node';
+import { Logger } from '../../utils/Logger';
+import { EnvioIndexerService } from '../envio/EnvioIndexerService';
 
 export interface MarketPrediction {
   token: string;
@@ -310,7 +309,7 @@ export class MarketPredictor {
         currentVolatility,
         predictedVolatility,
         volatilityTrend,
-        confidence: this.calculatePredictionConfidence(data, currentVolatility, predictedVolatility)
+        confidence: this.calculatePredictionConfidence(historicalData, currentVolatility, predictedVolatility)
       };
 
     } catch (error) {
@@ -326,7 +325,8 @@ export class MarketPredictor {
   ): Promise<MarketPrediction> {
     try {
       // Get current price
-      const currentPrice = await this.envioService.getTokenPrice(token);
+      const currentPrices = await this.envioService.getTokenPrices([token]);
+      const currentPrice = currentPrices[0]?.price || 0;
       
       // Get historical data
       const historicalData = await this.getHistoricalData(token, timeframe);
@@ -341,7 +341,7 @@ export class MarketPredictor {
       
       // Create input tensor
       const inputData = normalizedPrices.slice(-60); // Last 60 data points
-      const inputTensor = tf.tensor3d([inputData], [1, 60, 1]);
+      const inputTensor = tf.tensor3d([inputData.map(x => [x])], [1, 60, 1]);
 
       // Make prediction
       const prediction = this.model!.predict(inputTensor) as tf.Tensor;
@@ -387,7 +387,12 @@ export class MarketPredictor {
   ): Promise<Array<{ price: number; timestamp: Date; volume: number }>> {
     // Get historical prices from Envio
     const days = timeframe === '1h' ? 7 : timeframe === '4h' ? 30 : timeframe === '1d' ? 90 : 365;
-    return await this.envioService.getHistoricalPrices(token, days);
+    const tokenPrices = await this.envioService.getHistoricalPrices(token, days);
+    return tokenPrices.map(p => ({
+      price: p.price,
+      timestamp: p.timestamp,
+      volume: p.volume24h
+    }));
   }
 
   private calculateSMA(data: Array<{ price: number }>, period: number): number {
@@ -540,18 +545,37 @@ export class MarketPredictor {
     data: Array<{ price: number; timestamp: Date }>,
     currentVolatility: number,
     predictedVolatility: number
+  ): number;
+  private calculatePredictionConfidence(
+    data: Array<{ price: number; timestamp: Date }>,
+    predictedPrice: number
+  ): number;
+  private calculatePredictionConfidence(
+    data: Array<{ price: number; timestamp: Date }>,
+    currentVolatilityOrPredictedPrice: number,
+    predictedVolatility?: number
   ): number {
     if (data.length < 10) return 0.3; // Low confidence with little data
     
-    // Calculate confidence based on data quality and volatility consistency
-    const dataQuality = Math.min(data.length / 100, 1); // More data = higher confidence
-    const volatilityConsistency = 1 - Math.abs(currentVolatility - predictedVolatility) / currentVolatility;
-    const trendConsistency = this.calculateTrendConsistency(data);
-    
-    // Weighted average of confidence factors
-    const confidence = (dataQuality * 0.4 + volatilityConsistency * 0.4 + trendConsistency * 0.2);
-    
-    return Math.max(0.1, Math.min(0.95, confidence)); // Cap between 10% and 95%
+    if (predictedVolatility !== undefined) {
+      // Volatility prediction case
+      const dataQuality = Math.min(data.length / 100, 1); // More data = higher confidence
+      const volatilityConsistency = 1 - Math.abs(currentVolatilityOrPredictedPrice - predictedVolatility) / currentVolatilityOrPredictedPrice;
+      const trendConsistency = this.calculateTrendConsistency(data);
+      
+      // Weighted average of confidence factors
+      const confidence = (dataQuality * 0.4 + volatilityConsistency * 0.4 + trendConsistency * 0.2);
+      
+      return Math.max(0.1, Math.min(0.95, confidence)); // Cap between 10% and 95%
+    } else {
+      // Price prediction case
+      const recentPrices = data.slice(-10).map(d => d.price);
+      const avgPrice = recentPrices.reduce((sum, price) => sum + price, 0) / recentPrices.length;
+      const priceDeviation = Math.abs(currentVolatilityOrPredictedPrice - avgPrice) / avgPrice;
+      
+      // Lower deviation = higher confidence
+      return Math.max(0.3, Math.min(0.95, 1 - priceDeviation));
+    }
   }
 
   private calculateTrendConsistency(data: Array<{ price: number; timestamp: Date }>): number {
@@ -602,17 +626,4 @@ export class MarketPredictor {
     return normalizedData.map(value => value * (max - min) + min);
   }
 
-  private calculatePredictionConfidence(
-    historicalData: Array<{ price: number }>,
-    predictedPrice: number
-  ): number {
-    // Calculate confidence based on historical accuracy
-    // This is a simplified version
-    const recentPrices = historicalData.slice(-10).map(d => d.price);
-    const avgPrice = recentPrices.reduce((sum, price) => sum + price, 0) / recentPrices.length;
-    const priceDeviation = Math.abs(predictedPrice - avgPrice) / avgPrice;
-    
-    // Lower deviation = higher confidence
-    return Math.max(0.3, Math.min(0.95, 1 - priceDeviation));
-  }
 }

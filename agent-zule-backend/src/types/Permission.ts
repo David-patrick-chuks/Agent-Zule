@@ -1,5 +1,7 @@
 import { PermissionStatus } from './Common';
 
+export { PermissionStatus };
+
 export interface Permission {
   id: string;
   userId: string;

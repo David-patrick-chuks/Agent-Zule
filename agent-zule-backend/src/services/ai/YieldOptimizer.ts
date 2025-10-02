@@ -1,6 +1,6 @@
+import { RiskLevel, TokenInfo } from '../../types/Common';
+import { Portfolio, Position, YieldOpportunity, YieldSource } from '../../types/Portfolio';
 import { Logger } from '../../utils/Logger';
-import { Portfolio, Position, YieldAnalysis, YieldSource, YieldOpportunity } from '../../types/Portfolio';
-import { TokenInfo, RiskLevel } from '../../types/Common';
 
 export interface YieldOptimizationOptions {
   minApyThreshold?: number;
@@ -79,7 +79,7 @@ export class YieldOptimizer {
 
       const {
         minApyThreshold = 0.05, // 5% minimum
-        maxRiskLevel = 'medium',
+        maxRiskLevel = RiskLevel.MEDIUM,
         includeLiquidityPools = true,
         includeStaking = true,
         includeLending = true,
@@ -289,7 +289,7 @@ export class YieldOptimizer {
           },
           amount: migrationAmount,
           expectedImprovement,
-          riskLevel: opportunity.riskLevel,
+          riskLevel: this.convertStringToRiskLevel(opportunity.riskLevel),
           gasCost,
           slippage,
           priority
@@ -575,5 +575,18 @@ export class YieldOptimizer {
     if (improvementRatio > 100 && opportunity.riskLevel === 'low') return 'high';
     if (improvementRatio > 50) return 'medium';
     return 'low';
+  }
+
+  /**
+   * Convert string risk level to RiskLevel enum
+   */
+  private convertStringToRiskLevel(riskLevel: string): RiskLevel {
+    switch (riskLevel) {
+      case 'low': return RiskLevel.LOW;
+      case 'medium': return RiskLevel.MEDIUM;
+      case 'high': return RiskLevel.HIGH;
+      case 'critical': return RiskLevel.CRITICAL;
+      default: return RiskLevel.MEDIUM;
+    }
   }
 }

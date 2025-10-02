@@ -287,7 +287,7 @@ export class HyperSyncService {
       for (let i = fromBlock; i <= toBlock; i += batchSize) {
         const batchEnd = Math.min(i + batchSize - 1, toBlock);
         
-        const batchPromises = [];
+        const batchPromises: Promise<BlockData>[] = [];
         for (let blockNum = i; blockNum <= batchEnd; blockNum++) {
           batchPromises.push(this.getBlockByNumber(blockNum));
         }

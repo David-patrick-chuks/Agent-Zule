@@ -1,8 +1,10 @@
 import { ethers } from 'ethers';
-import { Logger } from '../../utils/Logger';
-import { MonadClient } from '../blockchain/MonadClient';
-import { ContractService } from '../blockchain/ContractService';
+import { TransactionType } from '../../models/Transaction';
 import { TransactionRepository } from '../../repositories/TransactionRepository';
+import { TransactionStatus } from '../../types/Common';
+import { Logger } from '../../utils/Logger';
+import { ContractService } from '../blockchain/ContractService';
+import { MonadClient } from '../blockchain/MonadClient';
 
 export interface SwapParams {
   tokenIn: string;
@@ -307,17 +309,17 @@ export class SwapService {
         userId,
         limit,
         offset,
-        { type: 'swap' }
+        { type: TransactionType.SWAP }
       );
 
       const swaps = result.transactions.map(tx => ({
-        id: tx._id.toString(),
+        id: (tx._id as any).toString(),
         tokenIn: tx.metadata?.tokenIn || '',
         tokenOut: tx.metadata?.tokenOut || '',
-        amountIn: tx.amount,
+        amountIn: tx.amount || '0',
         amountOut: tx.metadata?.amountOut || '0',
         transactionHash: tx.transactionHash || '',
-        timestamp: tx.executedAt,
+        timestamp: tx.executedAt || new Date(),
         gasUsed: tx.gasUsed || '0',
         fee: tx.fee || '0'
       }));
@@ -549,26 +551,22 @@ export class SwapService {
       if (result.transactionHash) {
         await this.transactionRepository.create({
           userId: '', // Would get from context
-          agentId: 'agent-zule',
-          type: 'swap',
-          status: result.success ? 'completed' : 'failed',
-          blockchain: 'monad',
+          type: TransactionType.SWAP,
+          status: result.success ? TransactionStatus.COMPLETED : TransactionStatus.FAILED,
           transactionHash: result.transactionHash,
-          fromAddress,
-          toAddress: this.dexContracts.get('uniswap') || '0x...',
           amount: params.amountIn,
           tokenAddress: params.tokenIn,
-          tokenSymbol: this.getTokenSymbol(params.tokenIn),
           gasUsed: result.gasUsed,
           fee: result.fee,
-          error: result.error,
           metadata: {
+            priority: 'medium',
+            tags: ['swap', 'dex'],
+            description: `Swap ${params.tokenIn} for ${params.tokenOut}`,
+            source: 'ai_recommendation',
+            relatedTransactions: [],
             tokenIn: params.tokenIn,
             tokenOut: params.tokenOut,
-            amountOutMin: params.amountOutMin,
-            slippage: params.slippage,
-            deadline: params.deadline,
-            recipient: params.recipient
+            amountOut: params.amountOutMin
           }
         });
       }
@@ -588,6 +586,8 @@ export class SwapService {
       if (pools.length === 0) return null;
 
       const pool = pools[0];
+      if (!pool) return null;
+      
       return {
         path: [tokenIn, tokenOut],
         pools: [pool.address],

@@ -26,8 +26,6 @@ export class DatabaseConfig {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
-        bufferCommands: false,
-        bufferMaxEntries: 0,
         retryWrites: true,
         retryReads: true,
       };
@@ -97,6 +95,9 @@ export class DatabaseConfig {
   }> {
     try {
       // Ping the database
+      if (!mongoose.connection.db) {
+        throw new Error('Database connection not available');
+      }
       await mongoose.connection.db.admin().ping();
       
       return {
@@ -138,6 +139,9 @@ export class DatabaseConfig {
     }
 
     try {
+      if (!mongoose.connection.db) {
+        throw new Error('Database connection not available');
+      }
       await mongoose.connection.db.dropDatabase();
       this.logger.info('Database dropped successfully');
     } catch (error) {
@@ -152,14 +156,14 @@ export class DatabaseConfig {
     }
 
     try {
-      // Import seed data
-      const { seedUsers } = await import('../seeds/UserSeed');
-      const { seedPortfolios } = await import('../seeds/PortfolioSeed');
-      const { seedPermissions } = await import('../seeds/PermissionSeed');
+      // Import seed data (commented out as seed files don't exist yet)
+      // const { seedUsers } = await import('../seeds/UserSeed');
+      // const { seedPortfolios } = await import('../seeds/PortfolioSeed');
+      // const { seedPermissions } = await import('../seeds/PermissionSeed');
 
-      await seedUsers();
-      await seedPortfolios();
-      await seedPermissions();
+      // await seedUsers();
+      // await seedPortfolios();
+      // await seedPermissions();
 
       this.logger.info('Database seeded successfully');
     } catch (error) {

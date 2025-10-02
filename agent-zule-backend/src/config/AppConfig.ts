@@ -24,7 +24,9 @@ export interface AppConfig {
   envio: {
     apiKey: string;
     graphqlUrl: string;
+    graphqlEndpoint: string;
     indexerUrl: string;
+    hyperSyncEndpoint: string;
   };
   blockchain: {
     monad: {
@@ -39,6 +41,18 @@ export interface AppConfig {
     metamask: {
       smartAccountFactory: string;
       entryPoint: string;
+    };
+  };
+  apis: {
+    coingecko: {
+      apiKey?: string;
+      baseUrl: string;
+    };
+    dexscreener: {
+      baseUrl: string;
+    };
+    fearGreed: {
+      baseUrl: string;
     };
   };
   ai: {
@@ -108,7 +122,9 @@ class ConfigManager {
       envio: {
         apiKey: process.env.ENVIO_API_KEY || '',
         graphqlUrl: process.env.ENVIO_GRAPHQL_URL || 'https://api.envio.dev/graphql',
-        indexerUrl: process.env.ENVIO_INDEXER_URL || 'https://indexer.envio.dev'
+        graphqlEndpoint: process.env.ENVIO_GRAPHQL_ENDPOINT || 'https://api.envio.dev/graphql',
+        indexerUrl: process.env.ENVIO_INDEXER_URL || 'https://indexer.envio.dev',
+        hyperSyncEndpoint: process.env.ENVIO_HYPERSYNC_ENDPOINT || 'https://hypersync.envio.dev'
       },
       blockchain: {
         monad: {
@@ -123,6 +139,18 @@ class ConfigManager {
         metamask: {
           smartAccountFactory: process.env.METAMASK_SMART_ACCOUNT_FACTORY || '0x9406Cc6185a346906296840746125a0E44976454',
           entryPoint: process.env.METAMASK_ENTRYPOINT || '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+        }
+      },
+      apis: {
+        coingecko: {
+          apiKey: process.env.COINGECKO_API_KEY,
+          baseUrl: process.env.COINGECKO_BASE_URL || 'https://api.coingecko.com/api/v3'
+        },
+        dexscreener: {
+          baseUrl: process.env.DEXSCREENER_BASE_URL || 'https://api.dexscreener.com/latest'
+        },
+        fearGreed: {
+          baseUrl: process.env.FEAR_GREED_BASE_URL || 'https://api.alternative.me/fng'
         }
       },
       ai: {

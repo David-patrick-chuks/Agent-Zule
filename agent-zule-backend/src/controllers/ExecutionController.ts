@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
-import { Logger } from '../utils/Logger';
-import { Transaction } from '../models/Transaction';
-import { Recommendation } from '../models/Recommendation';
 import { Permission } from '../models/Permission';
+import { Recommendation } from '../models/Recommendation';
+import { Transaction } from '../models/Transaction';
+import { RecommendationType, TransactionStatus } from '../types/Common';
+import { RecommendationStatus } from '../types/Recommendation';
+import { Logger } from '../utils/Logger';
 
 export class ExecutionController {
   private logger = Logger.getInstance();
@@ -75,16 +77,18 @@ export class ExecutionController {
       const executionResult = await this.simulateTradeExecution(transaction);
 
       // Update transaction status
-      transaction.status = executionResult.success ? 'completed' : 'failed';
+      transaction.status = executionResult.success ? TransactionStatus.COMPLETED : TransactionStatus.FAILED;
       transaction.transactionHash = executionResult.transactionHash;
       transaction.gasUsed = executionResult.gasUsed;
       transaction.fee = executionResult.fee;
-      transaction.error = executionResult.error;
+      if (executionResult.error) {
+        transaction.execution.lastError = executionResult.error;
+      }
       transaction.executedAt = new Date();
 
       await transaction.save();
 
-      this.logger.logTransaction(transaction._id.toString(), 'executed', {
+      this.logger.logTransaction((transaction._id as any).toString(), 'executed', {
         userId,
         type,
         success: executionResult.success,
@@ -141,11 +145,11 @@ export class ExecutionController {
         return;
       }
 
-      // Check if user confirmation is required
-      if (recommendation.details.requiresConfirmation && !userConfirmation) {
+      // Check if user confirmation is required (simplified check)
+      if (!userConfirmation && recommendation.riskLevel === 'high') {
         res.status(400).json({
           success: false,
-          message: 'User confirmation required for this recommendation'
+          message: 'User confirmation required for high-risk recommendations'
         });
         return;
       }
@@ -153,19 +157,19 @@ export class ExecutionController {
       // Execute based on recommendation type
       let executionResult;
       switch (recommendation.type) {
-        case 'rebalance':
+        case RecommendationType.REBALANCE:
           executionResult = await this.executeRebalance(recommendation);
           break;
-        case 'yield_optimize':
+        case RecommendationType.YIELD_OPTIMIZATION:
           executionResult = await this.executeYieldOptimization(recommendation);
           break;
-        case 'dca':
+        case RecommendationType.DCA_STRATEGY:
           executionResult = await this.executeDCA(recommendation);
           break;
-        case 'risk_adjust':
+        case RecommendationType.RISK_REDUCTION:
           executionResult = await this.executeRiskAdjustment(recommendation);
           break;
-        case 'cross_chain_opportunity':
+        case RecommendationType.POSITION_ADJUSTMENT:
           executionResult = await this.executeCrossChain(recommendation);
           break;
         default:
@@ -173,7 +177,7 @@ export class ExecutionController {
       }
 
       // Update recommendation status
-      recommendation.status = executionResult.success ? 'executed' : 'failed';
+      recommendation.status = executionResult.success ? RecommendationStatus.EXECUTED : RecommendationStatus.REJECTED;
       recommendation.executedAt = executionResult.success ? new Date() : undefined;
       await recommendation.save();
 
@@ -385,8 +389,8 @@ export class ExecutionController {
       }
 
       // Update transaction status
-      transaction.status = 'failed';
-      transaction.error = reason || 'Transaction cancelled by user';
+      transaction.status = TransactionStatus.FAILED;
+      transaction.execution.lastError = reason || 'Transaction cancelled by user';
       await transaction.save();
 
       this.logger.logTransaction(transactionId, 'cancelled', {

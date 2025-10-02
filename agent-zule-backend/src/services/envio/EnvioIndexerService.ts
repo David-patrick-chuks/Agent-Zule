@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { Config } from '../../config/AppConfig';
 import { Logger } from '../../utils/Logger';
+import { RealDataService } from '../indexer/RealDataService';
 
 export interface IndexerQuery {
   query: string;
@@ -86,6 +87,7 @@ export class EnvioIndexerService {
   private httpClient: AxiosInstance;
   private logger = Logger.getInstance();
   private config = Config.getConfig();
+  private realDataService: RealDataService;
 
   private constructor() {
     this.httpClient = axios.create({
@@ -97,6 +99,7 @@ export class EnvioIndexerService {
       }
     });
 
+    this.realDataService = RealDataService.getInstance();
     this.setupInterceptors();
   }
 
@@ -112,7 +115,7 @@ export class EnvioIndexerService {
    */
   public async query<T = any>(query: IndexerQuery): Promise<IndexerResponse<T>> {
     try {
-      this.logger.logEnvio('graphql_query', {
+      this.logger.logEnvio('graphql_query', 'query_execution', {
         query: query.query.substring(0, 100) + '...',
         variables: query.variables
       });
@@ -214,14 +217,15 @@ export class EnvioIndexerService {
         }
       `;
 
-      const response = await this.query<{ tokenPrices: TokenPrice[] }>({
-        query,
-        variables: {
-          tokenAddresses: tokenAddresses.map(addr => addr.toLowerCase())
-        }
+      // Use real data service instead of external GraphQL
+      const prices = await this.realDataService.getTokenPrices(tokenAddresses);
+      
+      this.logger.info('🚀 Real token prices fetched', { 
+        tokenAddresses, 
+        count: prices.length 
       });
-
-      return response.data.tokenPrices.map(this.mapTokenPrice);
+      
+      return prices;
 
     } catch (error) {
       this.logger.error('Failed to get token prices', error, { tokenAddresses });
@@ -350,15 +354,15 @@ export class EnvioIndexerService {
         }
       `;
 
-      const response = await this.query<{ marketData: MarketData[] }>({
-        query
+      // Use real data service instead of external GraphQL
+      const marketData = await this.realDataService.getMarketData();
+      
+      this.logger.info('🚀 Real market data fetched', { 
+        marketCap: marketData.totalMarketCap,
+        volume: marketData.totalVolume24h 
       });
-
-      if (response.data.marketData.length === 0) {
-        return this.getDefaultMarketData();
-      }
-
-      return this.mapMarketData(response.data.marketData[0]);
+      
+      return marketData;
 
     } catch (error) {
       this.logger.error('Failed to get market data', error);
@@ -379,7 +383,7 @@ export class EnvioIndexerService {
       let whereClause = `portfolioId: "${portfolioId}"`;
       
       if (fromDate || toDate) {
-        const conditions = [];
+        const conditions: string[] = [];
         if (fromDate) conditions.push(`timestamp_gte: ${Math.floor(fromDate.getTime() / 1000)}`);
         if (toDate) conditions.push(`timestamp_lte: ${Math.floor(toDate.getTime() / 1000)}`);
         whereClause += `, ${conditions.join(', ')}`;
@@ -615,6 +619,59 @@ export class EnvioIndexerService {
       averageGasPrice: '0',
       timestamp: new Date()
     };
+  }
+
+  /**
+   * Get historical price data for a token
+   */
+  public async getHistoricalPrices(tokenAddress: string, days: number): Promise<TokenPrice[]> {
+    try {
+      const query = `
+        query GetHistoricalPrices($tokenAddress: String!, $days: Int!) {
+          tokenPrices(
+            where: { token: $tokenAddress }
+            orderBy: timestamp
+            orderDirection: desc
+            first: $days
+          ) {
+            token
+            symbol
+            price
+            priceChange24h
+            priceChangePercent24h
+            volume24h
+            marketCap
+            timestamp
+          }
+        }
+      `;
+
+      // Use real data service instead of external GraphQL
+      const historicalData = await this.realDataService.getHistoricalPrices(tokenAddress, days);
+      
+      // Convert to TokenPrice format
+      const tokenPrices = historicalData.map(item => ({
+        token: tokenAddress.toLowerCase(),
+        symbol: tokenAddress.toUpperCase(),
+        price: item.price,
+        priceChange24h: 0, // Would need previous day's price to calculate
+        priceChangePercent24h: 0,
+        volume24h: item.volume,
+        timestamp: item.timestamp
+      }));
+      
+      this.logger.info('🚀 Real historical prices fetched', { 
+        tokenAddress, 
+        days, 
+        count: tokenPrices.length 
+      });
+      
+      return tokenPrices;
+
+    } catch (error) {
+      this.logger.error('Failed to get historical prices', error, { tokenAddress, days });
+      return [];
+    }
   }
 
   /**
